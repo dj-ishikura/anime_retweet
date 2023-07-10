@@ -14,17 +14,13 @@ def read_jsonl(input_path):
     with open(input_path, 'r', encoding='utf-8') as f:
         for line in f:
             # タブで区切られた行を分割し、2列目（0から数えて1）をJSONとして解析
-            json_string = line.split('\t')[1]
+            line = line.replace(",", "\t", 2)
+            json_string = line.split('\t')[2]
             data.append(json.loads(json_string.rstrip('\n|\r')))
     return data
 
-
-def count_retweet_users(input_file, start_date, end_date, period_weeks, output_csv, output_png, title, No):
-    start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').replace(tzinfo=pytz.UTC)
-    end_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S').replace(tzinfo=pytz.UTC)
+def count_retweet_users(input_file, start_date, end_date, period_weeks, output_csv, output_png, title, id):
     period = timedelta(weeks=int(period_weeks))
-    print(f'stat_data : {start_date}')
-    print(f'end_date : {end_date}')
 
     tweets = read_jsonl(input_file)
     tweets_df = pd.DataFrame(tweets)
@@ -54,28 +50,32 @@ def count_retweet_users(input_file, start_date, end_date, period_weeks, output_c
     plt.ylabel('Retweet Users Count')
     plt.savefig(output_png)
 
-def get_info_from_csv(number):
+def get_info_from_csv(id):
     # CSVファイルを読み込みます
-    df = pd.read_csv('./anime_info/anime_info_complete_hashtag_edit.csv') # keywords.csvはあなたのファイル名に置き換えてください
+    df = pd.read_csv('./anime_data_updated.csv', index_col=0) # keywords.csvはあなたのファイル名に置き換えてください
 
     # numberをインデックスとしてキーワードを取得します
-    title = df.loc[int(number), 'title']
-    start_date = df.loc[int(number), 'before_start_date']
-    end_date = df.loc[int(number), 'after_end_date']
+    title = df.loc[id, '作品名']
+    start_date = df.loc[id, '開始日']
+    start_date = datetime.strptime(start_date, "%Y年%m月%d日").replace(tzinfo=pytz.UTC)
+    end_date = df.loc[id, '終了日']
+    end_date = datetime.strptime(end_date, "%Y年%m月%d日").replace(tzinfo=pytz.UTC)
+    end_date = end_date + timedelta(days=1)
 
     return title, start_date, end_date
 
 if __name__ == "__main__":
     import sys
+    print(sys.argv)
     if len(sys.argv) != 6:
-        print('Usage: python count_retweet_users.py $input_file $period $output_csv $output_png $No')
+        print('Usage: python count_retweet_users.py $input_file $period $output_csv $output_png $id')
         sys.exit(1)
 
     input_file = sys.argv[1]
     period_weeks = sys.argv[2]
     output_csv = sys.argv[3]
     output_png = sys.argv[4]
-    No = sys.argv[5]
-    title, start_date, end_date = get_info_from_csv(No)
+    id = sys.argv[5]
+    title, start_date, end_date = get_info_from_csv(id)
 
-    count_retweet_users(input_file, start_date, end_date, period_weeks, output_csv, output_png, title, No)
+    count_retweet_users(input_file, start_date, end_date, period_weeks, output_csv, output_png, title, id)

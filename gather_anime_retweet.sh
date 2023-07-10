@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # 入力ディレクトリを指定します
-input_dir="./retweet_data"
+input_dir="./retweet_data_2022"
 
 # 出力ディレクトリを指定します
-output_dir="./anime_retweet"
+output_dir="./anime_retweet_2022"
 mkdir -p $output_dir
 
 # 入力ディレクトリ内のすべてのサブディレクトリを読み取ります
@@ -21,7 +21,6 @@ for subdir in $input_dir/*; do
 
     # サブディレクトリごとの処理を行うスクリプトを呼び出します
     qcmd bash gather_anime_retweet_daily.sh $subdir $output_dir
-    sleep 0.1
-
+    sleep 1
 done
 

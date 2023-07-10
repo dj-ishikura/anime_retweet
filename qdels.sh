@@ -1,5 +1,5 @@
 #!/bin/bash
 
-for i in {2059879..2059973}; do
+for i in {2067591..2067678}; do
   qdel $i
 done

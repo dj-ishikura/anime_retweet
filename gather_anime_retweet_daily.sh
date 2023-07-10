@@ -17,10 +17,10 @@ for file in $INPUT_DIR/*.tsv; do
         if [[ "$hashtag_name" != "$prev_hashtag_name" ]]; then
             subdir="$OUTPUT_DIR/$hashtag_name"
             mkdir -p $subdir
-            output_file="$subdir/$date.tsv"
+            output_file="$subdir/$date.csv"
             prev_hashtag_name=$hashtag_name
         fi
-        echo -E "$tweet_id"'\t'"$hashtag_name"'\t'"$tweet_json" >> $output_file
+        echo -E "$tweet_id"','"$hashtag_name"','"$tweet_json" >> $output_file
 
     done < "$file"
 done
