@@ -50,7 +50,7 @@ def count_tweet_users(input_file, start_date, end_date, period_weeks, output_csv
 
     # プロットの作成と保存
     df.plot(kind='line', y='count', marker='o')
-    plt.title(f'{title} : Tweet Users Count, period {period_weeks}')
+    plt.title(f'{id}\n{title} : Tweet Users Count, period {period_weeks}')
     plt.xlabel('Date')
     plt.ylabel('Tweet Users Count')
     plt.savefig(output_png)

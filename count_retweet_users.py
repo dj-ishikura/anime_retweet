@@ -45,7 +45,7 @@ def count_retweet_users(input_file, start_date, end_date, period_weeks, output_c
 
     # プロットの作成と保存
     df.plot(kind='line', y='count', marker='o')
-    plt.title(f'{title} : Retweet Users Count, period {period_weeks}')
+    plt.title(f'{id}\n{title} : Retweet Users Count, period {period_weeks}')
     plt.xlabel('Date')
     plt.ylabel('Retweet Users Count')
     plt.savefig(output_png)
