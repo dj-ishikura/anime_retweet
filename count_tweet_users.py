@@ -37,6 +37,7 @@ def count_tweet_users(input_file, start_date, end_date, period_weeks, output_csv
 
     while current_date < end_date:
         next_date = current_date + period
+        print(f'current_date: {current_date}, next_date: {next_date}')
         weekly_tweets = tweets_df[(tweets_df['created_at'] >= current_date) & (tweets_df['created_at'] < next_date)]
         user_count = weekly_tweets['user'].apply(lambda x: x['id']).nunique()
 
@@ -65,7 +66,7 @@ def get_info_from_csv(id):
     start_date = datetime.strptime(start_date, "%Y年%m月%d日").replace(tzinfo=pytz.UTC)
     end_date = df.loc[id, '終了日']
     end_date = datetime.strptime(end_date, "%Y年%m月%d日").replace(tzinfo=pytz.UTC)
-    end_date = end_date + timedelta(days=1)
+    # end_date = end_date + timedelta(days=7)
 
     return title, start_date, end_date
 

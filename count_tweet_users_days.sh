@@ -25,7 +25,8 @@ for file in $input_dir/*.csv; do
     output_png="${output_dir}/${id}_week_tweet_counts.png"
     if [ ! -f "$output_csv" ] || [ ! -f "$output_png" ]; then
         echo $output_csv
-        J=$id M=128 qcmd python count_tweet_users_days.py $file $output_csv $output_png $id
+        # J=$id M=192 qcmd python count_tweet_users_days.py $file $output_csv $output_png $id
+        python count_tweet_users_days.py $file $output_csv $output_png $id
         sleep 1
     fi
     break

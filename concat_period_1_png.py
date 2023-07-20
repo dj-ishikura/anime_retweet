@@ -6,7 +6,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.utils import ImageReader
 
 # 出力ファイル名
-output_file_name = 'count_tweet_2022_days'
+output_file_name = 'count_retweet_2022'
 
 # 画像ファイルのパスをリストに入れます
 def create_pdf(image_files):
@@ -22,7 +22,7 @@ def create_pdf(image_files):
     c.save()
 
 # ディレクトリを指定します
-directory = 'count_tweet_2022_days'
+directory = 'count_retweet_2022'
 
 # 出力ファイルを指定します
 output_file = output_file_name+'.txt'
@@ -35,7 +35,7 @@ if os.path.exists(output_file):
 
 # ディレクトリ内のすべてのCSVファイルをループします
 for filename in os.listdir(directory):
-    if filename.endswith('.png'):
+    if filename.endswith('1_week_retweet_counts.png'):
         image_files.append(f'{directory}/{filename[:-4]}.png')
 
 image_files = sorted(image_files)

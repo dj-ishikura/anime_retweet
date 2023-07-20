@@ -16,7 +16,12 @@ def read_jsonl(input_path):
             # タブで区切られた行を分割し、2列目（0から数えて1）をJSONとして解析
             line = line.replace(",", "\t", 2)
             json_string = line.split('\t')[2]
-            data.append(json.loads(json_string.rstrip('\n|\r')))
+            tweet = json.loads(json_string.rstrip('\n|\r'))
+            ruduced_data = {
+                'created_at': tweet['created_at'],
+                'user': tweet['user']
+            }
+            data.append(ruduced_data)
     return data
 
 def count_retweet_users(input_file, start_date, end_date, period_weeks, output_csv, output_png, title, id):

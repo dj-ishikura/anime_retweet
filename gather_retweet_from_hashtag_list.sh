@@ -8,8 +8,8 @@ output_dir="retweet_data_2022"
 mkdir -p $output_dir
 
 # 検索するディレクトリの範囲を決定します
-start_date="2022-01-01"
-end_date="2023-01-01"
+start_date="2023-01-01"
+end_date="2023-01-07"
 
 # 開始日から終了日までの各日に対してループします
 current_date=$start_date
