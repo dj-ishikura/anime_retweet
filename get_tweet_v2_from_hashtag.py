@@ -15,16 +15,16 @@ logger = get_logger(__name__)
 
 def print_info(tweet, hashtag):
     try:
-        
-        if "retweeted_status" in tweet:
-            id = tweet["retweeted_status"]["id_str"]
+        tweet = tweet["data"]
+        if "referenced_tweets" in tweet:
+            id = tweet["referenced_tweets"]["id"]
         else:
-            id = tweet["id_str"]
+            id = tweet["id"]
         if "entities" in tweet:
-            hashtag_list = [h["text"] for h in tweet["entities"]["hashtags"]]
+            hashtag_list = [h["tag"] for h in tweet["entities"]["hashtags"]]
             if hashtag in hashtag_list:
-                    print(id + '\t' + hashtag + '\t' + json.dumps(tweet, ensure_ascii=False))
-    
+                print(id + '\t' + hashtag + '\t' + json.dumps(tweet, ensure_ascii=False))
+
     except KeyError as e:
         # logger.debug('KeyError: %s', e)
         pass
@@ -32,11 +32,12 @@ def print_info(tweet, hashtag):
         # logger.debug('TypeError: %s', t)
         pass
     
+    
 if __name__ == '__main__':
 
     import codecs
     sys.stdin = codecs.getreader(sys.stdin.encoding)(sys.stdin.detach(), errors='ignore')
 
-    hashtag = "うまよん"
+    hashtag = "水星の魔女"
     for tweet in parse_tweet(sys.stdin):
         print_info(tweet, hashtag)

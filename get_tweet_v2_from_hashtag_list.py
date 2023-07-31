@@ -15,12 +15,13 @@ logger = get_logger(__name__)
 
 def print_info(tweet, hashtag_set):
     try:
-        if "retweeted_status" in tweet:
-            id = tweet["retweeted_status"]["id_str"]
+        tweet = tweet["data"]
+        if "referenced_tweets" in tweet:
+            id = tweet["referenced_tweets"]["id"]
         else:
-            id = tweet["id_str"]
+            id = tweet["id"]
         if "entities" in tweet:
-            hashtag_list = [hashtag["text"] for hashtag in tweet["entities"]["hashtags"]]
+            hashtag_list = [hashtag["tag"] for hashtag in tweet["entities"]["hashtags"]]
             common_hashtags = hashtag_set & set(hashtag_list)
             if common_hashtags:
                 for h in common_hashtags:
@@ -36,8 +37,8 @@ def print_info(tweet, hashtag_set):
 
 def get_keywords_from_txt():
     # テキストファイルからキーワードリストを読み込む
-    with open("./anime_hashtag_list_2020-2023.csv", 'r') as f:
-        lines = [line.strip().split(',')[1] for line in f.readlines()]
+    with open("./anime_hashtag_list_2022.tsv", 'r') as f:
+        lines = [line.strip().split('\t')[1] for line in f.readlines()]
     return set(lines)
     
 if __name__ == '__main__':

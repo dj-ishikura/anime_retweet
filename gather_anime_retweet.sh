@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # 入力ディレクトリを指定します
-input_dir="./retweet_data_2022"
+input_dir="./retweet_data"
 
 # 出力ディレクトリを指定します
-output_dir="./anime_retweet_2022"
+output_dir="./anime_tweet"
 mkdir -p $output_dir
 
 # 入力ディレクトリ内のすべてのサブディレクトリを読み取ります

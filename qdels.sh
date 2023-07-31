@@ -1,5 +1,5 @@
 #!/bin/bash
 
-for i in {2069423..2069465}; do
-  qdel $i
+for i in {2089357..2089370}; do
+  qdel -Wforce $i
 done

@@ -11,12 +11,14 @@ output_dir=$3
 if [ ! -e $output_dir/$date ]; then mkdir -p $output_dir/$date ; fi
 
 # ディレクトリ内の各ファイルをループします
-for file in "$dir"/json_$date*.txt.gz; do
+echo $date
+for file in "$dir"/$date*.txt.gz; do
+    
     # ファイルであることを確認します
     if [ -f "$file" ]; then
         FILE_NAME="$(basename "$file" .txt.gz)"
         # 出力ファイルを指定します
-        outfile=$output_dir/$date/retweet_$FILE_NAME.tsv
+        outfile=$output_dir/$date/$FILE_NAME.tsv
         echo $outfile
         if [ ! -e $outfile ]; then # 出力ファイルが存在しない場合
             

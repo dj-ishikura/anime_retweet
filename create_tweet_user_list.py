@@ -22,13 +22,13 @@ def read_jsonl(input_path):
                 tweet = tweet["retweeted_status"]
                 ruduced_data = {
                     'created_at': tweet['created_at'],
-                    'user': tweet['user']
+                    'user': tweet['user']['id']
                 }
                 data.append(ruduced_data)
     return data
 
 
-def count_tweet_users(input_file, start_date, end_date, output_csv, title, id):
+def count_tweet_users(input_file, start_date, end_date, output_txt, title, id):
 
     tweets = read_jsonl(input_file)
     tweets_df = pd.DataFrame(tweets)
@@ -39,13 +39,11 @@ def count_tweet_users(input_file, start_date, end_date, output_csv, title, id):
     counts = []
 
     weekly_tweets = tweets_df[(tweets_df['created_at'] >= start_date) & (tweets_df['created_at'] < end_date)]
-    user_count = tweets_df['user'].apply(lambda x: x['id']).nunique()
+    user_list = tweets_df['user'].unique().tolist()
 
-    counts.append({"count": user_count})
-    print(counts)
-    df = pd.DataFrame(counts)
-
-    df.to_csv(output_csv)
+    with open(output_txt, 'w') as f:
+        for item in user_list:
+            f.write("%s\n" % item)
 
 def get_info_from_csv(id):
     # CSVファイルを読み込みます
@@ -65,8 +63,8 @@ if __name__ == "__main__":
     import sys
 
     input_file = sys.argv[1]
-    output_csv = sys.argv[2]
+    output_txt = sys.argv[2]
     id = sys.argv[3]
     title, start_date, end_date = get_info_from_csv(id)
 
-    count_tweet_users(input_file, start_date, end_date, output_csv, title, id)
+    count_tweet_users(input_file, start_date, end_date, output_txt, title, id)

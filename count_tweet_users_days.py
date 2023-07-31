@@ -31,16 +31,17 @@ def count_tweet_users(input_file, start_date, end_date, output_csv, output_png, 
     tweets_df = pd.DataFrame(tweets)
     tweets_df['created_at'] = pd.to_datetime(tweets_df['created_at'], format='%a %b %d %H:%M:%S +0000 %Y')
     tweets_df['created_at'] = tweets_df['created_at'].dt.tz_localize('UTC').dt.tz_convert('Asia/Tokyo')  # convert to JST
-
+    
     current_date = start_date
+    print(f'current_date: {current_date}')
     counts = []
 
-    while current_date < end_date:
+    while current_date <= end_date:
         next_date = current_date + period
         weekly_tweets = tweets_df[(tweets_df['created_at'] >= current_date) & (tweets_df['created_at'] < next_date)]
         user_count = weekly_tweets['user'].apply(lambda x: x['id']).nunique()
 
-        counts.append({'date': current_date, 'count': user_count})
+        counts.append({'date': current_date.strftime('%Y-%m-%d %H:%M:%S%z'), 'count': user_count})
         current_date = next_date
 
     df = pd.DataFrame(counts)
@@ -62,10 +63,12 @@ def get_info_from_csv(id):
     # numberをインデックスとしてキーワードを取得します
     title = df.loc[id, '作品名']
     start_date = df.loc[id, '開始日']
-    start_date = datetime.strptime(start_date, "%Y年%m月%d日").replace(tzinfo=pytz.UTC)
+    start_date = datetime.strptime(start_date, "%Y年%m月%d日").replace(tzinfo=pytz.timezone('Asia/Tokyo'))
+    # start_date = datetime.strptime(start_date, "%Y年%m月%d日")
     end_date = df.loc[id, '終了日']
-    end_date = datetime.strptime(end_date, "%Y年%m月%d日").replace(tzinfo=pytz.UTC)
-    end_date = end_date + timedelta(days=1)
+    end_date = datetime.strptime(end_date, "%Y年%m月%d日").replace(tzinfo=pytz.timezone('Asia/Tokyo'))
+    # end_date = datetime.strptime(end_date, "%Y年%m月%d日")
+    # end_date = end_date + timedelta(days=7)
 
     return title, start_date, end_date
 

@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # 特定のディレクトリを指定します
-RT_TWEET_PATH='/work/my016/mirror/twitter-rt/ja'
+RT_TWEET_PATH='/work/my016/mirror/twitter-stream/ja'
 
 # 出力先のディレクトリを作成
-output_dir="retweet_data"
+output_dir="stream_tweet_data_suisei"
 mkdir -p $output_dir
 
 # 検索するディレクトリの範囲を決定します
-start_date="2020-01-03"
-end_date="2023-07-01"
+start_date="2022-10-02"
+end_date="2023-01-16"
 
 # 開始日から終了日までの各日に対してループします
 current_date=$start_date
@@ -27,10 +27,8 @@ while [[ "$current_date" < "$end_date" ]]; do
             sleep 10
             job_count=$(qstat -u $USER | wc -l)
         done
-        
-        
-        W=48 J=$current_date qcmd bash gather_retweet_daily.sh $dir $current_date $output_dir
-        
+            
+        W=48 J=$current_date qcmd bash gather_stream_from_hashtag_daily.sh.sh $dir $current_date $output_dir
         sleep 1
     fi
     # 次の日に進みます

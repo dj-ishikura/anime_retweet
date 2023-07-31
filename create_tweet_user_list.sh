@@ -11,8 +11,8 @@ function wait_for_jobs() {
     done
 }
 
-input_dir="./anime_retweet_concat_2022"
-output_dir="count_tweet_2022_days_2"
+input_dir="./anime_tweet_concat"
+output_dir="tweet_user_list"
 mkdir -p $output_dir
 
 for file in $input_dir/*.csv; do
@@ -21,12 +21,10 @@ for file in $input_dir/*.csv; do
     file="${input_dir}/${id}.csv"
     wait_for_jobs
 
-    output_csv="${output_dir}/${id}_week_tweet_counts.csv"
-    output_png="${output_dir}/${id}_week_tweet_counts.png"
-    if [ ! -f "$output_csv" ] || [ ! -f "$output_png" ]; then
+    output_csv="${output_dir}/${id}.txt"
+    if [ ! -f "$output_csv" ]; then
         echo $output_csv
-        J=$id M=32 qcmd python count_tweet_users_days.py $file $output_csv $output_png $id
-        # python count_tweet_users_days.py $file $output_csv $output_png $id
+        J=$id M=24 qcmd python create_tweet_user_list.py $file $output_csv $id
         sleep 1
     fi
 done

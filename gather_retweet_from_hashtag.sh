@@ -4,12 +4,12 @@
 RT_TWEET_PATH='/work/my016/mirror/twitter-rt/ja'
 
 # 出力先のディレクトリを作成
-output_dir="retweet_data_suisei"
+output_dir="retweet_data_うまよん"
 mkdir -p $output_dir
 
 # 検索するディレクトリの範囲を決定します
-start_date="2022-10-02"
-end_date="2023-01-09"
+start_date="2020-07-06"
+end_date="2020-09-30"
 
 # 開始日から終了日までの各日に対してループします
 current_date=$start_date
