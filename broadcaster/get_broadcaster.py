@@ -75,6 +75,10 @@ def table_to_dataframe(table, type_name):
         col_name = [col for col in df.columns if '日時' in col][0]
         df.rename(columns={col_name: '時間'}, inplace=True)
 
+    if any([col for col in df.columns if '配信サービス' in col]):
+        col_name = [col for col in df.columns if '配信サービス' in col][0]
+        df.rename(columns={col_name: '配信サイト'}, inplace=True)
+
     # 配信サイトが複数ある場合、それを1つずつの行に分けるのだ
     if '配信サイト' in df.columns:
         df = df.drop('配信サイト', axis=1).join(df['配信サイト'].str.split('\n', expand=True).stack().reset_index(level=1, drop=True).rename('配信サイト'))
@@ -125,14 +129,20 @@ if '時間' in result_df.columns:
     result_df['時間'] = result_df['時間'].replace('', np.nan)
     result_df['時間'].fillna(method='ffill', inplace=True)
 
+# "放送局" または "配信サイト" の列が存在しない場合、それらの列を追加する処理なのだ
+if "放送局" not in df.columns:
+    result_df["放送局"] = None  # すべてのエントリに対してNoneを設定するのだ
+if "配信サイト" not in df.columns:
+    result_df["配信サイト"] = None  # すべてのエントリに対してNoneを設定するのだ
+
+'''
 # 前に出したい列名をリストとして指定するのだ
 cols_to_front = ['開始', '終了', 'タイプ', '放送局', '配信サイト', '時間']
-
 # 新しい列順序を生成するのだ
 new_cols = cols_to_front + [col for col in df if col not in cols_to_front]
-
 # 列の順序を変更するのだ
 result_df = result_df[new_cols]
+'''
 
 result_df.to_csv(output_file, index=False)
 
