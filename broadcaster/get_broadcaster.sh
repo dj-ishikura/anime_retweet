@@ -28,7 +28,7 @@ function get_memory_allocation() {
 }
 
 input_dir="../html_files/anime_wiki_page"
-output_dir="data_2"
+output_dir="data"
 mkdir -p $output_dir
 
 for file in $input_dir/*.html; do
@@ -40,8 +40,7 @@ for file in $input_dir/*.html; do
     mem=$(get_memory_allocation $size)
 
     output_file="${output_dir}/${id}.csv"
-    o_file="data/${id}.csv"
-    if [ ! -f "$o_file" ]; then
+    if [ ! -f "$output_file" ]; then
         echo $output_file
         J=$id M=$mem qcmd python get_broadcaster.py $file $output_file
         sleep 1

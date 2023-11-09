@@ -4,7 +4,7 @@
 input_dir="./retweet_data"
 
 # 出力ディレクトリを指定します
-output_dir="./anime_tweet"
+output_dir="./anime_retweet"
 mkdir -p $output_dir
 
 # 入力ディレクトリ内のすべてのサブディレクトリを読み取ります

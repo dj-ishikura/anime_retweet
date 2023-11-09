@@ -17,19 +17,19 @@ def split_df(df):
     # カテゴリを割り当てる関数
     def categorize_week(week):
         if week <= 4:
-            return 'First 4 weeks'
+            return 'First'
         elif week <= total_weeks - 4:
-            return 'Middle weeks'
+            return 'Middle'
         else:
-            return 'Last 4 weeks'
+            return 'Last'
 
     # カテゴリを割り当て
     df['category'] = df['week_number'].apply(categorize_week)
 
     # データフレームを3つに分ける
-    df_first_4_weeks = df[df['category'] == 'First 4 weeks']
-    df_middle_weeks = df[df['category'] == 'Middle weeks']
-    df_last_4_weeks = df[df['category'] == 'Last 4 weeks']
+    df_first_4_weeks = df[df['category'] == 'First']
+    df_middle_weeks = df[df['category'] == 'Middle']
+    df_last_4_weeks = df[df['category'] == 'Last']
     return df_first_4_weeks, df_middle_weeks, df_last_4_weeks
 
 def plot_4times(input_file, output_file, title, id):
@@ -43,13 +43,13 @@ def plot_4times(input_file, output_file, title, id):
 
     plt.subplot(1, 2, 1)
     colors = ['skyblue' if x > 0 else 'darkblue' for x in growth_rates]
-    plt.bar(['初期 to 中期', '中期 to 末期'], growth_rates, color=colors)
+    plt.bar(['序盤 to 中盤', '中盤 to 終盤'], growth_rates, color=colors)
     plt.axhline(0, color='black', linewidth=0.8)
     plt.ylabel('Growth Rate (%)')
     plt.title('Growth Rate per Division')
 
     plt.subplot(1, 2, 2)
-    plt.plot(['初期', '中期', '末期'], data_counts, marker='o')
+    plt.plot(['序盤', '中盤', '終盤'], data_counts, marker='o')
     plt.ylabel('Data Counts')
     plt.title('Data Counts per Division')
 
@@ -84,7 +84,8 @@ if __name__ == "__main__":
             input_file = os.path.join(tweet_directory, filename)
             growth_rates, data_counts = plot_4times(input_file, output_png, title, id)
             image_files.append(output_png)
-            results.append([id, title] + growth_rates + data_counts)
+            average_growth_rate = np.mean(growth_rates)
+            results.append([id, title, average_growth_rate] + growth_rates + data_counts)
 
     output_pdf = 'result/plot_4times.pdf'
     image_files = sorted(image_files)
@@ -92,5 +93,5 @@ if __name__ == "__main__":
         f.write(img2pdf.convert([i for i in image_files if i.endswith(".png")]))
 
     # Output results to CSV
-    df_results = pd.DataFrame(results, columns=['id', 'title', 'growth_rate_1st_to_2nd', 'growth_rate_2nd_to_3rd', 'count_1st', 'count_2nd', 'count_3rd'])
+    df_results = pd.DataFrame(results, columns=['id', 'title', 'average_growth_rate', 'growth_rate_1st_to_2nd', 'growth_rate_2nd_to_3rd', 'count_1st', 'count_2nd', 'count_3rd'])
     df_results.to_csv('result/count_tweet_4times_growth_rates_and_counts.csv', index=False)

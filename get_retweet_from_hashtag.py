@@ -37,6 +37,6 @@ if __name__ == '__main__':
     import codecs
     sys.stdin = codecs.getreader(sys.stdin.encoding)(sys.stdin.detach(), errors='ignore')
 
-    hashtag = "うまよん"
+    hashtag = "ガル学"
     for tweet in parse_tweet(sys.stdin):
         print_info(tweet, hashtag)

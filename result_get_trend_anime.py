@@ -53,7 +53,7 @@ def get_hit_anime(input_files, threshold):
 
     for file in input_files:
         df = pd.read_csv(file)
-        if df['count'].mean() > threshold:
+        if df['tweet_users_count'].mean() > threshold:
             id = file.split('/')[1].split('_')[0]
             hit_anime_list.append(id)
 
@@ -65,17 +65,37 @@ def get_trend_anime(input_files, threshold):
 
     for file in input_files:
         df = pd.read_csv(file, index_col='date', parse_dates=True)
-        if df['count'].mean() > threshold:
+        if df['tweet_users_count'].mean() > threshold:
             df1, df2, df3 = np.array_split(df, 3)
-            avg1 = df1['count'].mean()
-            avg2 = df2['count'].mean()
-            avg3 = df3['count'].mean()
+            avg1 = df1['tweet_users_count'].mean()
+            avg2 = df2['tweet_users_count'].mean()
+            avg3 = df3['tweet_users_count'].mean()
             growth_rates = [(avg2 - avg1) / avg1 * 100, (avg3 - avg2) / avg2 * 100]
             if growth_rates[0] > 0 and growth_rates[1] > 0:
                 id = file.split('/')[1].split('_')[0]
                 trend_anime_list.append(id)
     
     return trend_anime_list
+
+def get_trend_anime_2(input_files, threshold):
+    
+    trend_anime_list = []
+
+    for file in input_files:
+        df = pd.read_csv(file, index_col='date', parse_dates=True)
+        if df['tweet_users_count'].mean() > threshold:
+            df1, df2, df3 = split_df(df)
+            avg1 = df1['tweet_users_count'].mean()
+            avg2 = df2['tweet_users_count'].mean()
+            avg3 = df3['tweet_users_count'].mean()
+            growth_rates = [(avg2 - avg1) / avg1 * 100, (avg3 - avg2) / avg2 * 100]
+            if growth_rates[0] > 0 and growth_rates[1] > 0:
+            # if growth_rates[0] > 10: 
+                id = file.split('/')[1].split('_')[0]
+                trend_anime_list.append(id)
+    
+    return trend_anime_list
+
 
 def split_df(df):
     # 週数（何週目か）を計算
@@ -102,24 +122,6 @@ def split_df(df):
     df_last_4_weeks = df[df['category'] == 'Last 4 weeks']
     return df_first_4_weeks, df_middle_weeks, df_last_4_weeks
 
-def get_trend_anime_2(input_files, threshold):
-    
-    trend_anime_list = []
-
-    for file in input_files:
-        df = pd.read_csv(file, index_col='date', parse_dates=True)
-        if df['count'].mean() > threshold:
-            df1, df2, df3 = split_df(df)
-            avg1 = df1['count'].mean()
-            avg2 = df2['count'].mean()
-            avg3 = df3['count'].mean()
-            growth_rates = [(avg2 - avg1) / avg1 * 100, (avg3 - avg2) / avg2 * 100]
-            if growth_rates[0] > 0 and growth_rates[1] > 0:
-            # if growth_rates[0] > 10: 
-                id = file.split('/')[1].split('_')[0]
-                trend_anime_list.append(id)
-    
-    return trend_anime_list
 
 # Replace 'your_directory' with the path to your directory
 directory = 'count_tweet'
@@ -141,18 +143,20 @@ trend_anime_set = trend_anime_set & hit_anime_set
 
 # XOR 演算
 hit_anime_set = trend_anime_set ^ hit_anime_set
-anime_set = anime_set ^ trend_anime_set
-anime_set = anime_set ^ hit_anime_set
+miner_anime_set = anime_set ^ trend_anime_set
+miner_anime_set = miner_anime_set ^ hit_anime_set
 
 # 必要に応じてリストに戻す
 trend_anime_list = list(trend_anime_set)
 hit_anime_list = list(hit_anime_set)
 
-anime_list = sorted(list(anime_set))
-print(len(anime_list))
-print(trend_anime_list)
+miner_anime_list = sorted(list(miner_anime_set))
+print(f'anime_list: {len(anime_list)}')
+print(f'trend_anime_list: {len(trend_anime_list)}')
+print(f'hit_anime_list: {len(hit_anime_list)}')
+print(f'miner_anime_list: {len(miner_anime_list)}')
 
-# output_dir = 'plot_3division_count_tweet'
+# output_dir = 'plot_3division_tweet_count_tweet'
 output_dir = 'plot_4times_count_tweet'
 output_result_dir = './result/'
 
@@ -164,8 +168,8 @@ image_files_1 = [os.path.join(directory, f+'_1_week_tweet_counts.png') for f in 
 image_files_2 = [os.path.join(output_dir, f+'.png') for f in hit_anime_list]
 create_pdf(image_files_1, image_files_2, output_result_dir+'hit_anime_list.pdf')
 
-image_files_1 = [os.path.join(directory, f+'_1_week_tweet_counts.png') for f in anime_list]
-image_files_2 = [os.path.join(output_dir, f+'.png') for f in anime_list]
+image_files_1 = [os.path.join(directory, f+'_1_week_tweet_counts.png') for f in miner_anime_list]
+image_files_2 = [os.path.join(output_dir, f+'.png') for f in miner_anime_list]
 create_pdf(image_files_1, image_files_2, output_result_dir+'miner_anime_list.pdf')
 
 # CSVファイルを読み込みます
@@ -184,3 +188,20 @@ with open(output_result_dir+'hit_anime_list.txt', 'w') as f:
         # Get the title corresponding to the item ID
         title = df.loc[item, '作品名']
         f.write(f"{item}: {title}\n") 
+
+# hit_anime_listをテキストファイルに出力
+with open(output_result_dir+'miner_anime_list.txt', 'w') as f:
+    for item in miner_anime_list:
+        # Get the title corresponding to the item ID
+        title = df.loc[item, '作品名']
+        f.write(f"{item}: {title}\n") 
+
+# ラベル付きリストの作成: (label, anime_id) 形式のタプルのリストを作ります
+class_anime_list = [(anime_id, label) for label, anime_list in zip(["trend", "hit", "miner"], [trend_anime_list, hit_anime_list, miner_anime_list]) for anime_id in anime_list]
+# データフレームを作成
+df_output = pd.DataFrame(class_anime_list, columns=['id', 'class'])
+# アニメ名の取得
+df_output['title'] = df_output['id'].apply(lambda x: df.loc[x, '作品名'])
+# CSVファイルに出力
+df_output.to_csv(output_result_dir + 'class_anime_list.csv', index=False)
+

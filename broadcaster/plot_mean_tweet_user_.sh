@@ -1,5 +1,0 @@
-#!/bin/bash
-
-python plot_mean_tweet_user_broadcaster.py
-python plot_mean_tweet_user_broadcaster_stream.py
-python plot_mean_tweet_user_broadcaster_broadcaster.py
