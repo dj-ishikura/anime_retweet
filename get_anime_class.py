@@ -41,7 +41,7 @@ def get_data(directory_path):
             df = pd.read_csv(file_path, index_col=0)
 
             # データの長さが1の場合はスキップ
-            if len(df) < 11:
+            if (len(df) < 11) or (len(df) > 13):
                 continue
 
             anime_id = filename.split('_')[0]
@@ -58,6 +58,7 @@ def get_data(directory_path):
 def filter_top_percentage_data(anime_tweet_data_dict, top_percentage):
     # 平均ツイート数の上位パーセンテージに相当する値を計算
     threshold = np.percentile(anime_tweet_data_dict['mean_anime_weekly_tweet_list'], 100 - top_percentage)
+    print(f'閾値：{threshold}')
 
     # 閾値以上のツイート数を持つアニメのみをフィルタリング
     top_indices = [i for i, mean_value in enumerate(anime_tweet_data_dict['mean_anime_weekly_tweet_list']) if mean_value >= threshold]
@@ -233,30 +234,30 @@ def save_clustering_results_to_csv(anime_tweet_data_dict, filename):
 
 def plot_and_save_all_clusters_scaled(anime_tweet_data_dict, output_file, weekly_tweet_user_class, mean_tweet_user_class):
     scaled_data = anime_tweet_data_dict['scaled_weekly_tweet_data']
+    weekly_clusters = anime_tweet_data_dict['weekly_tweet_user_clusters']
 
     # グラフを描画
     fig, axes = plt.subplots(weekly_tweet_user_class, mean_tweet_user_class, figsize=(15, 8), sharex=True, sharey=True)
 
-    # 各クラスタに属する時系列をプロット
+    # weekly_tweet_user_clustersごとにサブプロットを作成
     for i in range(weekly_tweet_user_class):
+        # 指定したweekly_clusterに属する時系列データのインデックスを取得
+        indices = [idx for idx, label in enumerate(weekly_clusters) if label == i]
+        cluster_series = [scaled_data[idx] for idx in indices]
+
+        # クラスタの重心を計算
+        barycenter = TimeSeriesKMeans(n_clusters=1).fit(cluster_series).cluster_centers_[0]
+
         for j in range(mean_tweet_user_class):
             ax = axes[i, j] if weekly_tweet_user_class > 1 and mean_tweet_user_class > 1 else axes[i]
-            
-            # 指定したクラスタに属する時系列データのインデックスを取得
-            indices = [idx for idx, label in enumerate(anime_tweet_data_dict['weekly_tweet_user_clusters']) if label == i]
 
-            # クラスタ内の時系列データのリストを取得
-            cluster_series = [scaled_data[idx] for idx in indices if anime_tweet_data_dict['mean_tweet_user_clusters'][idx] == j]
-            
-            # 各時系列データをプロット
+            # 各mean_tweet_user_clusterに属する時系列データをプロット
             for idx in indices:
                 if anime_tweet_data_dict['mean_tweet_user_clusters'][idx] == j:
-                    ax.plot(scaled_data[idx].ravel(),alpha=0.8, label=f'Series {idx}')
+                    ax.plot(scaled_data[idx].ravel(), alpha=0.8, label=f'Series {idx}')
 
-            # クラスタのバリセンターを計算
-            if cluster_series:  # クラスタにデータが存在する場合のみ計算
-                barycenter = dtw_barycenter_averaging(cluster_series)
-                ax.plot(barycenter.ravel(), "k-", linewidth=2, alpha=1, label='Barycenter')
+            # 重心をプロット
+            ax.plot(barycenter.ravel(), "k-", linewidth=2, alpha=1, label='Barycenter')
             
             # タイトルとラベルの設定
             ax.set_title(f'Weekly Cluster {i} - Mean Cluster {j}')
@@ -314,10 +315,12 @@ def plot_and_save_all_clusters(anime_tweet_data_dict, output_file):
 
 def main():
     mean_tweet_user_class = 3
-    weekly_tweet_user_class = 3
+    weekly_tweet_user_class = 4
     directory_path = 'count_tweet'
     anime_tweet_data_dict = get_data(directory_path)
-    anime_tweet_data_dict = filter_top_percentage_data(anime_tweet_data_dict, 20)
+    # 上位数%を取得
+    anime_tweet_data_dict = filter_top_percentage_data(anime_tweet_data_dict, 10)
+    print(len(anime_tweet_data_dict['anime_weekly_tweet_list']))
 
     anime_tweet_data_dict = cluster_by_mean_tweet_users(anime_tweet_data_dict, mean_tweet_user_class)
     anime_tweet_data_dict = cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class)
