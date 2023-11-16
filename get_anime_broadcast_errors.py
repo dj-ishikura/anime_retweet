@@ -42,6 +42,15 @@ def check_all_integer_episodes(broadcast_df):
     # '話数'列のすべての値が整数かどうかをチェック
     return all(broadcast_df['話数'].apply(is_integer_episode))
 
+
+def is_not_empty(episode_str):
+    # 文字列が空でないかをチェックする
+    return episode_str != ''
+
+def check_all_empty_episodes(broadcast_df):
+    # '話数'列のすべての値が整数かどうかをチェック
+    return all(broadcast_df['話数'].apply(is_not_empty))
+
 # 不備のあるアニメを記録する関数
 def record_irregular_anime(anime_id, title, output_df):
     output_df = output_df.append({'id': anime_id, 'title': title}, ignore_index=True)
@@ -92,7 +101,9 @@ def process_tsv_files(directory_path, anime_data_df, output_filename):
             print(period_broadcast_df['話数'])
             print(check_all_integer_episodes(period_broadcast_df))
             if not check_all_integer_episodes(period_broadcast_df):
-                irregular_list.append("総集編or漢数字")
+                irregular_list.append("総集編")
+            if not check_all_empty_episodes(period_broadcast_df):
+                irregular_list.append("漢数字")
 
             if not check_weekly_broadcast(period_broadcast_df['初放送日'].tolist()):
                 irregular_list.append("週とび")
