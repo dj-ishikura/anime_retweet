@@ -27,6 +27,7 @@ from tsfresh.feature_extraction import EfficientFCParameters
 from tslearn.clustering import KShape
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
 from tslearn.barycenters import dtw_barycenter_averaging
+from sklearn.cluster import KMeans
 
 def get_data(directory_path):
     anime_tweet_data_dict = {}
@@ -70,104 +71,6 @@ def filter_top_percentage_data(anime_tweet_data_dict, top_percentage):
 
     return anime_tweet_data_dict
 
-from sklearn.cluster import KMeans
-
-def cluster_time_series(anime_tweet_data_dict, n_clusters, resample_length=12):
-    def differencing(series):
-        # 1時点前のデータとの差分を取る
-        diff_series = np.diff(series, n=1)
-        return diff_series
-
-    # リサンプリングされた時系列データのリストを作成
-    resampled_data = []
-
-    for series in anime_tweet_data_dict['anime_weekly_tweet_list']:
-        # リサンプリング（各時系列を同じ長さに揃える）
-        x_original = np.linspace(0, 1, len(series))
-        x_resampled = np.linspace(0, 1, resample_length)
-        resampled_series = np.interp(x_resampled, x_original, series)
-        resampled_data.append(resampled_series)
-
-    # 差分変換を適用
-    diff_data = np.array([differencing(series) for series in resampled_data])
-
-    # クラスタリングモデルを作成し、フィットさせる
-    km = KMeans(n_clusters=n_clusters)
-    labels = km.fit_predict(diff_data)
-
-    # クラスタリングの結果を辞書に追加
-    anime_tweet_data_dict['weekly_tweet_user_clusters'] = labels
-
-    return anime_tweet_data_dict
-
-def cluster_time_series_kshape(anime_tweet_data_dict, n_clusters, resample_length=12):
-    # リサンプリングして時系列データのリストを作成
-    resampled_data = []
-    for series in anime_tweet_data_dict['anime_weekly_tweet_list']:
-        # 12週間にリサンプリング
-        x_original = np.linspace(0, 1, len(series))
-        x_resampled = np.linspace(0, 1, resample_length)
-        resampled_series = np.interp(x_resampled, x_original, series)
-
-
-        # 正規化
-        normalized_series = MinMaxScaler().fit_transform(resampled_series.reshape(-1, 1)).ravel()
-        resampled_data.append(normalized_series)
-
-    # すべての時系列を同じ長さに揃えたデータセットを作成
-    resampled_data = np.array(resampled_data)
-
-    # 時系列データをスケーリング
-    scaler = TimeSeriesScalerMeanVariance(mu=0., std=1.)  # z-normalize the time series
-    scaled_data = scaler.fit_transform(resampled_data)
-
-    # kshapeクラスタリングモデルを作成し、フィットさせる
-    ks = KShape(n_clusters=n_clusters, n_init=1, random_state=42)
-    labels = ks.fit_predict(scaled_data)
-
-    # クラスタリングの結果を辞書に追加
-    anime_tweet_data_dict['weekly_tweet_user_clusters'] = labels
-
-    return anime_tweet_data_dict
-
-def cluster_time_series_with_features(anime_tweet_data_dict, n_clusters, resample_length=12):
-    # リサンプリングして時系列データのリストを作成
-    resampled_data = []
-    for series in anime_tweet_data_dict['anime_weekly_tweet_list']:
-        # 12週間にリサンプリング
-        x_original = np.linspace(0, 1, len(series))
-        x_resampled = np.linspace(0, 1, resample_length)
-        resampled_series = np.interp(x_resampled, x_original, series)
-        resampled_data.append(resampled_series)
-    
-    # DataFrame形式で時系列データを整形
-    time_series_df = pd.DataFrame({
-        'id': np.repeat(np.arange(len(resampled_data)), resample_length),
-        'time': np.tile(np.arange(resample_length), len(resampled_data)),
-        'value': np.concatenate(resampled_data)
-    })
-
-    # 特徴抽出（警告が出る可能性があるため、警告を無視）
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=ConvergenceWarning)
-        # EfficientFCParameters() を使用して効率的な特徴量設定を取得
-        extraction_settings = EfficientFCParameters()
-        extracted_features = extract_features(time_series_df, column_id='id', column_sort='time',
-                                              default_fc_parameters=extraction_settings)
-
-
-    # NaNを含む列を削除
-    extracted_features.dropna(axis=1, inplace=True)
-
-    # K-Meansクラスタリングを実行
-    km = KMeans(n_clusters=n_clusters, random_state=42)
-    labels = km.fit_predict(extracted_features)
-
-    # クラスタリングの結果を辞書に追加
-    anime_tweet_data_dict['weekly_tweet_user_clusters'] = labels
-
-    return anime_tweet_data_dict
-
 def cluster_by_mean_tweet_users(anime_tweet_data_dict, mean_tweet_user_class):
     mean_values = anime_tweet_data_dict['mean_anime_weekly_tweet_list']
 
@@ -181,36 +84,66 @@ def cluster_by_mean_tweet_users(anime_tweet_data_dict, mean_tweet_user_class):
     return anime_tweet_data_dict
 
 def cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class):
-    # 週ごとのツイート数のリストを取得
     weekly_tweet_data = anime_tweet_data_dict['anime_weekly_tweet_list']
-    
-    # リサンプリングされた時系列データのリストを作成
     resampled_and_normalized_data = []
+    resampled_data_for_clustering = []
 
-    # MinMaxScalerのインスタンスを作成（全てのデータに対して1つのインスタンスを使用）
     scaler = MinMaxScaler()
 
     for series in weekly_tweet_data:
-        # 12週間にリサンプリング
         x_original = np.linspace(0, 1, len(series))
         x_resampled = np.linspace(0, 1, 12)
         resampled_series = np.interp(x_resampled, x_original, series)
 
-        # 正規化（0から1の範囲）
         normalized_series = scaler.fit_transform(resampled_series.reshape(-1, 1)).ravel()
         resampled_and_normalized_data.append(normalized_series)
 
-    # 正規化されたデータをディクショナリに追加
+        # クラスタリング用のデータから1週目と11, 12週目を除外
+        filtered_series = np.delete(normalized_series, [0, 11])
+        # filtered_series = np.delete(normalized_series, [])
+        resampled_data_for_clustering.append(filtered_series)
+
     anime_tweet_data_dict['scaled_weekly_tweet_data'] = np.array(resampled_and_normalized_data)
 
-    # DTWを使った時系列クラスタリング
-    model = TimeSeriesKMeans(n_clusters=weekly_tweet_user_class, metric="dtw", verbose=True, max_iter=10)
-    labels = model.fit_predict(anime_tweet_data_dict['scaled_weekly_tweet_data'])
+    # 階層的クラスタリングを使用
+    # model = AgglomerativeClustering(n_clusters=weekly_tweet_user_class, linkage='average')
+    model = TimeSeriesKMeans(n_clusters=weekly_tweet_user_class, metric="dtw", verbose=True, max_iter=10, random_state=42)
+    labels = model.fit_predict(np.array(resampled_data_for_clustering))
 
-    # クラスタリングの結果を辞書に追加
     anime_tweet_data_dict['weekly_tweet_user_clusters'] = labels
 
     return anime_tweet_data_dict
+
+def plot_cluster_variability(anime_tweet_data_dict, output_file):
+    num_weekly_clusters = len(set(anime_tweet_data_dict['weekly_tweet_user_clusters']))
+
+    fig, axes = plt.subplots(num_weekly_clusters, 1, figsize=(10, num_weekly_clusters * 4), sharex=True)
+
+    all_variability_avgs = []
+
+    for i, cluster in enumerate(sorted(set(anime_tweet_data_dict['weekly_tweet_user_clusters']))):
+        indices = [index for index, w_c in enumerate(anime_tweet_data_dict['weekly_tweet_user_clusters']) if w_c == cluster]
+        cluster_data = np.array([anime_tweet_data_dict['scaled_weekly_tweet_data'][idx] for idx in indices])
+
+        variability = np.std(cluster_data, axis=0)
+        avg_variability = np.mean(variability)
+        all_variability_avgs.append(avg_variability)
+
+        ax = axes[i] if num_weekly_clusters > 1 else axes
+        ax.plot(range(1, len(variability) + 1), variability, label='Standard Deviation')
+        ax.axhline(y=avg_variability, color='r', linestyle='-', label='Average Std Dev')
+        ax.axvline(x=5, color='g', linestyle='--')  # 例として第5週を示す縦線
+        
+        ax.set_title(f'Cluster {cluster}')
+        ax.set_xlabel('Week (Starting from Week 1)')
+        ax.set_ylabel('Standard Deviation of Tweet Users Count')
+        ax.set_ylim([0, 0.4])  # y軸の範囲を0から0.4に固定
+        ax.legend()
+
+    plt.tight_layout()
+    plt.suptitle('Variability in Weekly Tweet User Clusters with Average', fontsize=16)
+    plt.savefig(output_file, bbox_inches='tight')
+    plt.close()
 
 def save_clustering_results_to_csv(anime_tweet_data_dict, filename):
 
@@ -246,7 +179,7 @@ def plot_and_save_all_clusters_scaled(anime_tweet_data_dict, output_file, weekly
         cluster_series = [scaled_data[idx] for idx in indices]
 
         # クラスタの重心を計算
-        barycenter = TimeSeriesKMeans(n_clusters=1).fit(cluster_series).cluster_centers_[0]
+        # barycenter = TimeSeriesKMeans(n_clusters=1).fit(cluster_series).cluster_centers_[0]
 
         for j in range(mean_tweet_user_class):
             ax = axes[i, j] if weekly_tweet_user_class > 1 and mean_tweet_user_class > 1 else axes[i]
@@ -254,10 +187,11 @@ def plot_and_save_all_clusters_scaled(anime_tweet_data_dict, output_file, weekly
             # 各mean_tweet_user_clusterに属する時系列データをプロット
             for idx in indices:
                 if anime_tweet_data_dict['mean_tweet_user_clusters'][idx] == j:
-                    ax.plot(scaled_data[idx].ravel(), alpha=0.8, label=f'Series {idx}')
+                    # x軸の値を1から始めるように変更
+                    ax.plot(range(1, len(scaled_data[idx]) + 1), scaled_data[idx].ravel(), alpha=0.8, label=f'Series {idx}')
 
-            # 重心をプロット
-            ax.plot(barycenter.ravel(), "k-", linewidth=2, alpha=1, label='Barycenter')
+            # ax.plot(range(1, len(barycenter) + 1), barycenter.ravel(), "k-", linewidth=2, alpha=1, label='Barycenter')
+
             
             # タイトルとラベルの設定
             ax.set_title(f'Weekly Cluster {i} - Mean Cluster {j}')
@@ -286,7 +220,7 @@ def plot_and_save_all_clusters(anime_tweet_data_dict, output_file):
             if indices:
                 for idx in indices:
                     data = anime_tweet_data_dict['anime_weekly_tweet_list'][idx]
-                    ax.plot(data)
+                    ax.plot(range(1, len(data) + 1), data)
                     
                 # 目盛りラベルの設定
                 ax.tick_params(axis='both', which='major', labelsize=8)
@@ -295,7 +229,7 @@ def plot_and_save_all_clusters(anime_tweet_data_dict, output_file):
                 # 軸の範囲を設定
                 data_lengths = [len(anime_tweet_data_dict['anime_weekly_tweet_list'][idx]) for idx in indices]
                 max_length = max(data_lengths)
-                ax.set_xlim([0, max_length - 1])
+                ax.set_xlim([1, max_length])
                 
                 # y軸の範囲を個別に設定
                 all_y_values = [y for idx in indices for y in anime_tweet_data_dict['anime_weekly_tweet_list'][idx]]
