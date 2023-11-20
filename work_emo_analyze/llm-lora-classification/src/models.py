@@ -9,6 +9,8 @@ from transformers.modeling_outputs import (
     SequenceClassifierOutput,
 )
 
+import pandas as pd
+import numpy as np
 
 class Model(nn.Module):
     def __init__(
@@ -38,7 +40,8 @@ class Model(nn.Module):
             self.backbone.gradient_checkpointing_enable()
 
         hidden_size: int = self.backbone.config.hidden_size
-        self.classifier = nn.Linear(hidden_size, num_labels, bias=False)
+        self.classifier = nn.Linear(hidden_size, num_labels)
+        print(f'num_labels : \n {num_labels}')
         self.loss_fn = nn.CrossEntropyLoss()
 
     def forward(
@@ -60,6 +63,7 @@ class Model(nn.Module):
             seq_length - 1,
         ]
         logits: FloatTensor = self.classifier(eos_hidden_states)
+        
         loss: FloatTensor = self.loss_fn(logits, labels)
 
         return SequenceClassifierOutput(

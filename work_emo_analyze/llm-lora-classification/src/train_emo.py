@@ -11,16 +11,12 @@ from transformers import AutoTokenizer, BatchEncoding, PreTrainedModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers.optimization import get_linear_schedule_with_warmup
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
+import sklearn.metrics as metrics
 
 import src.utils as utils
 from src.models import Model
-
 import pandas as pd
 import numpy as np
-
-import os
-
-
 
 
 class Args(Tap):
@@ -28,7 +24,7 @@ class Args(Tap):
     dataset_dir: Path = "./datasets/wrime"
 
     batch_size: int = 32
-    epochs: int = 3
+    epochs: int = 1
     num_warmup_epochs: int = 1
 
     template_type: int = 2
@@ -42,9 +38,19 @@ class Args(Tap):
     seed: int = 42
 
     def process_args(self):
-        self.polarity_labels = list(range(-2, 3))
-        self.labels: list[int] = self.polarity_labels
+        # 各感情カテゴリーのラベルの範囲を設定 (0, 1, 2, 3)
+        self.emotion_labels = list(range(4))  # 8つの感情カテゴリーそれぞれについて
 
+        # 感情極性のラベルの範囲を設定 (-2, -1, 0, 1, 2)
+        self.polarity_labels = list(range(-2, 3))
+
+        # ラベルの設定
+        self.labels = {
+            'emotion': self.emotion_labels,  # 8つの感情カテゴリーのラベル
+            'polarity': self.polarity_labels  # 感情極性のラベル
+        }
+
+        # 出力ディレクトリの設定
         date, time = datetime.now().strftime("%Y-%m-%d/%H-%M-%S.%f").split("/")
         self.output_dir = self.make_output_dir(
             "outputs",
@@ -52,6 +58,7 @@ class Args(Tap):
             date,
             time,
         )
+
 
     def make_output_dir(self, *args) -> Path:
         args = [str(a).replace("/", "__") for a in args]
@@ -98,27 +105,34 @@ class Experiment:
             *self.create_optimizer(steps_per_epoch),
         )
 
-    def load_dataset(
-        self,
-        split: str,
-        shuffle: bool = False,
-    ) -> DataLoader:
+    def load_dataset(self, split: str, shuffle: bool = False) -> DataLoader:
         path: Path = self.args.dataset_dir / f"{split}.tsv"
         dataset: pd.DataFrame = pd.read_csv(path, sep='\t')
         return self.create_loader(dataset.to_dict(orient="records"), shuffle=shuffle)
 
     def collate_fn(self, data_list: list[dict]) -> BatchEncoding:
         texts = [d["Sentence"] for d in data_list]
-
         inputs: BatchEncoding = self.tokenizer(
             texts,
             truncation=True,
             padding=True,
             return_tensors="pt",
-            max_length=args.max_seq_len,
+            max_length=self.args.max_seq_len,
         )
 
-        labels = torch.LongTensor([d['Avg. Readers_Sentiment']+2 for d in data_list])
+        # ラベルをTensorに変換
+        labels = torch.tensor([[
+            d['Avg. Readers_Joy'],
+            d['Avg. Readers_Sadness'],
+            d['Avg. Readers_Anticipation'],
+            d['Avg. Readers_Surprise'],
+            d['Avg. Readers_Anger'],
+            d['Avg. Readers_Fear'],
+            d['Avg. Readers_Disgust'],
+            d['Avg. Readers_Trust'],
+            d['Avg. Readers_Sentiment']
+        ] for d in data_list], dtype=torch.float)
+
         return BatchEncoding({**inputs, "labels": labels})
 
     def create_loader(
@@ -167,14 +181,16 @@ class Experiment:
         return optimizer, lr_scheduler
 
     def run(self):
+        # 最初のバリデーション
         val_metrics = {"epoch": None, **self.evaluate(self.val_dataloader)}
-        best_epoch, best_val_f1 = None, val_metrics["f1"]
+        best_epoch, best_val_mae = None, val_metrics["mae"]
         best_state_dict = self.model.clone_state_dict()
         self.log(val_metrics)
+        for param in self.model.parameters():
+            param.requires_grad = True
 
         for epoch in trange(self.args.epochs, dynamic_ncols=True):
             self.model.train()
-
             for batch in tqdm(
                 self.train_dataloader,
                 total=len(self.train_dataloader),
@@ -184,83 +200,130 @@ class Experiment:
                 self.optimizer.zero_grad()
                 out: SequenceClassifierOutput = self.model(**batch)
                 loss: torch.FloatTensor = out.loss
+                print(f'loss : {loss}')
                 self.accelerator.backward(loss)
 
                 self.optimizer.step()
                 self.lr_scheduler.step()
 
+            # エポックごとのバリデーション
             self.model.eval()
             val_metrics = {"epoch": epoch, **self.evaluate(self.val_dataloader)}
             self.log(val_metrics)
 
-            if val_metrics["f1"] > best_val_f1:
-                best_val_f1 = val_metrics["f1"]
+            # 最良モデルの更新
+            if val_metrics["mae"] < best_val_mae:
+                best_val_mae = val_metrics["mae"]
                 best_epoch = epoch
                 best_state_dict = self.model.clone_state_dict()
 
+        # 最良モデルのロードとテスト
         self.model.load_state_dict(best_state_dict)
         self.model.eval()
-
         val_metrics = {"best-epoch": best_epoch, **self.evaluate(self.val_dataloader)}
         test_metrics = self.evaluate(self.test_dataloader)
-
         return val_metrics, test_metrics
+
+    def get_predictions(self, dataloader: DataLoader):
+        self.model.eval()
+        predictions = []
+        with torch.no_grad():
+            for batch in dataloader:
+                inputs = {k: v.to(self.accelerator.device) for k, v in batch.items() if k != 'labels'}
+                outputs = self.model(**inputs)
+                logits = outputs.logits
+                preds = logits.detach().cpu().numpy()
+                predictions.extend(preds)
+        return predictions
+
+    def display_predictions(self, dataloader: DataLoader):
+        for batch in dataloader:
+            inputs = {k: v.to(self.accelerator.device) for k, v in batch.items() if k != 'labels'}
+            logits_emotion, logits_polarity = self.model(**inputs)
+            preds_emotion = logits_emotion.detach().cpu().numpy()
+            preds_polarity = logits_polarity.detach().cpu().numpy()
+
+            # 予測結果を適切な形式に変換
+            for pred_emotion, pred_polarity in zip(preds_emotion, preds_polarity):
+                predicted_label_emotion = np.argmax(pred_emotion, axis=-1)
+                predicted_label_polarity = np.argmax(pred_polarity, axis=-1) - 2  # -2 から 2 の範囲に調整
+                print(f"Emotion: {predicted_label_emotion}, Polarity: {predicted_label_polarity}")
+
 
     @torch.inference_mode()
     def evaluate(self, dataloader: DataLoader) -> dict[str, float]:
+        num_labels = 9  # ラベルの総数
         self.model.eval()
-        total_loss, gold_labels, pred_labels = 0, [], []
+        total_loss = 0
+
+        # MAEを計算するための変数を初期化
+        total_mae = [0.0 for _ in range(num_labels)]  # num_labels はラベルの総数
+        num_samples = 0
+
+        total_correct = 0  # Accuracy用
+        all_preds = []  # QWK用
+        all_trues = []  # QWK用
 
         for batch in tqdm(dataloader, total=len(dataloader), dynamic_ncols=True, leave=False):
             out: SequenceClassifierOutput = self.model(**batch)
 
-            batch_size: int = batch.input_ids.size(0)
-            loss = out.loss.item() * batch_size
+            batch_size: int = batch['input_ids'].size(0)
+            num_samples += batch_size
 
-            pred_labels += out.logits.argmax(dim=-1).tolist()
-            gold_labels += batch.labels.tolist()
-            total_loss += loss
+            for i in range(num_labels):
+                true = batch['labels'][:, i]
+                # print(f"batch['labels'][:, i] : \n {batch['labels'][:, i]}")
+                # print(f"out.logits : \n {out.logits}")
+                pred = out.logits[i]
+                
+                total_mae[i] += torch.sum(torch.abs(pred - true)).item()
 
-        accuracy: float = accuracy_score(gold_labels, pred_labels)
-        precision, recall, f1, _ = precision_recall_fscore_support(
-            gold_labels,
-            pred_labels,
-            average="macro",
-            zero_division=0,
-            labels=args.labels,
+                # 正解率の計算のために予測と実際のラベルを保存
+                all_preds.append(pred.cpu())
+                all_trues.append(true.cpu())
+
+                # 正解率の計算
+                total_correct += (pred.round() == true).sum().item()
+
+        # 各ラベルのMAEを平均化
+        avg_mae = sum(total_mae) / (num_samples * num_labels)
+
+        # Accuracyを計算
+        accuracy = total_correct / (num_samples * num_labels)
+
+        # QWKを計算
+        qwk = metrics.cohen_kappa_score(
+            np.concatenate(all_trues), 
+            np.concatenate(all_preds).round(), 
+            weights="quadratic"
         )
-
+        print(f'loss : {total_loss / num_samples}')
         return {
-            "loss": loss / len(dataloader.dataset),
+            "loss": total_loss / num_samples,
+            "mae": avg_mae,
             "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
+            "qwk": qwk
         }
-
+    
     def log(self, metrics: dict) -> None:
         utils.log(metrics, self.args.output_dir / "log.csv")
         tqdm.write(
             f"epoch: {metrics['epoch']} \t"
             f"loss: {metrics['loss']:2.6f}   \t"
             f"accuracy: {metrics['accuracy']:.4f} \t"
-            f"precision: {metrics['precision']:.4f} \t"
-            f"recall: {metrics['recall']:.4f} \t"
-            f"f1: {metrics['f1']:.4f}"
+            f"mae: {metrics['mae']:.4f} \t"
         )
-
 
 def main(args: Args):
     exp = Experiment(args=args)
     val_metrics, test_metrics = exp.run()
+    exp.display_predictions(exp.val_dataloader)
 
-    utils.save_json(val_metrics, args.output_dir / "val-metrics.json")
+    utils.save_json(val_metrics, args.output_dir / "dev-metrics.json")
     utils.save_json(test_metrics, args.output_dir / "test-metrics.json")
     utils.save_config(args, args.output_dir / "config.json")
 
-
 if __name__ == "__main__":
-    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     args = Args().parse_args()
     utils.init(seed=args.seed)
     main(args)

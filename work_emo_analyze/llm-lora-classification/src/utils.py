@@ -31,6 +31,9 @@ def save_json(data: dict[Any, Any], path: Path | str) -> None:
     with path.open("w") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
+def load_tsv(path: Path | str) -> pd.DataFrame:
+    path = Path(path)
+    return pd.read_csv(path, seq='\t')
 
 def load_jsonl(path: Path | str) -> pd.DataFrame:
     path = Path(path)
