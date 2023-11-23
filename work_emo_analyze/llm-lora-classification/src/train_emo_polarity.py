@@ -14,7 +14,7 @@ from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from sklearn.metrics import mean_absolute_error, cohen_kappa_score
 
 import src.utils as utils
-from src.models_emo import Model
+from src.models_emo_polarity import Model
 
 import pandas as pd
 import numpy as np
@@ -26,27 +26,22 @@ class Args(Tap):
     dataset_dir: Path = "./datasets/wrime"
 
     batch_size: int = 32
-    # batch_size: int = 64 # 動作テスト用
     epochs: int = 3
     num_warmup_epochs: int = 1
-    # num_warmup_epochs: int = 0 # 動作テスト用
 
     template_type: int = 2
 
     lr: float = 2e-5
     lora_r: int = 32
     weight_decay: float = 0.01
-    max_seq_len: int = 256
-    # max_seq_len: int = 128  # 動作テスト用
-    gradient_checkpointing: bool = True 
-    # gradient_checkpointing: bool = False # 動作テスト用
+    max_seq_len: int = 512
+    gradient_checkpointing: bool = True
 
     seed: int = 42
 
     def process_args(self):
-        self.emotion_labels = list(range(4))
         self.polarity_labels = list(range(-2, 3))
-        # self.labels: list[int] = self.polarity_labels
+        self.labels: list[int] = self.polarity_labels
 
         date, time = datetime.now().strftime("%Y-%m-%d/%H-%M-%S.%f").split("/")
         self.output_dir = self.make_output_dir(
@@ -76,6 +71,7 @@ class Experiment:
 
         self.model: PreTrainedModel = Model(
             model_name=args.model_name,
+            num_labels=len(args.labels),
             lora_r=args.lora_r,
             gradient_checkpointing=args.gradient_checkpointing,
         ).eval()
@@ -120,18 +116,7 @@ class Experiment:
             max_length=args.max_seq_len,
         )
 
-        labels = torch.tensor([[
-            d['Avg. Readers_Joy'],
-            d['Avg. Readers_Sadness'],
-            d['Avg. Readers_Anticipation'],
-            d['Avg. Readers_Surprise'],
-            d['Avg. Readers_Anger'],
-            d['Avg. Readers_Fear'],
-            d['Avg. Readers_Disgust'],
-            d['Avg. Readers_Trust'],
-        ] for d in data_list], dtype=torch.float)
-        
-
+        labels = torch.LongTensor([d['Avg. Readers_Sentiment']+2 for d in data_list])
         return BatchEncoding({**inputs, "labels": labels})
 
     def create_loader(
@@ -181,7 +166,7 @@ class Experiment:
 
     def run(self):
         val_metrics = {"epoch": None, **self.evaluate(self.val_dataloader)}
-        best_epoch, best_val_mae = None, val_metrics["mae"]
+        best_epoch, best_val_loss = None, val_metrics["mae"]
         best_state_dict = self.model.clone_state_dict()
         self.log(val_metrics)
 
@@ -206,8 +191,8 @@ class Experiment:
             val_metrics = {"epoch": epoch, **self.evaluate(self.val_dataloader)}
             self.log(val_metrics)
 
-            if val_metrics["mae"] < best_val_mae:
-                best_val_mae = val_metrics["mae"]
+            if val_metrics["mae"] > best_val_loss:
+                best_val_loss = val_metrics["mae"]
                 best_epoch = epoch
                 best_state_dict = self.model.clone_state_dict()
 
@@ -219,83 +204,29 @@ class Experiment:
 
         return val_metrics, test_metrics
 
-    def predict_test_data(self):
-        self.model.eval()
-        predictions = []
-        all_batch_texts, all_pred_labels, all_gold_labels = [], [], []
-
-        with torch.no_grad():
-            for batch in tqdm(self.test_dataloader, total=len(self.test_dataloader), dynamic_ncols=True):
-                out: SequenceClassifierOutput = self.model(**batch)
-
-                # テキストのデコード
-                batch_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in batch['input_ids']]
-                all_batch_texts.extend(batch_texts)
-
-                # 各感情と感情極性に対する予測ラベルの取得
-                batch_pred_labels = [logit.argmax(dim=-1).tolist() for logit in out.logits]
-                batch_pred_labels = [label for sublist in batch_pred_labels for label in sublist]
-                all_pred_labels.extend(batch_pred_labels)
-
-                # 実際のラベル
-                batch_gold_labels = [label for sublist in batch.labels.tolist() for label in sublist]
-                all_gold_labels.extend(batch_gold_labels)
-
-            all_pred_labels_ = [all_pred_labels[i:i + 8] for i in range(0, len(all_pred_labels), 8)]
-            all_gold_labels_ = [all_gold_labels[i:i + 8] for i in range(0, len(all_gold_labels), 8)]
-
-            # 各感情カテゴリーに対して、予測、実際のラベル、テキストを関連付ける
-            for text, pred, gold in zip(all_batch_texts, all_pred_labels_, all_gold_labels_):
-                predictions.append({
-                    "text": text,
-                    "predictions": pred,
-                    "gold_labels": gold
-                })
-
-        return predictions
-
     @torch.inference_mode()
     def evaluate(self, dataloader: DataLoader) -> dict[str, float]:
         self.model.eval()
-        total_loss, all_pred_labels, all_gold_labels = 0, [], []
-
-        # MAEを計算するための変数を初期化
-        # total_mae = [0.0 for _ in range(num_labels)]  # num_labels はラベルの総数
-        num_samples = 0
-
-        total_correct = 0  # Accuracy用
-        all_preds = []  # QWK用
-        all_trues = []  # QWK用
+        total_loss, gold_labels, pred_labels = 0, [], []
 
         for batch in tqdm(dataloader, total=len(dataloader), dynamic_ncols=True, leave=False):
             out: SequenceClassifierOutput = self.model(**batch)
 
             batch_size: int = batch.input_ids.size(0)
-            num_samples += batch_size
+            loss = out.loss.item() * batch_size
 
-            total_loss += out.loss.item() * batch_size
+            pred_labels += out.logits.argmax(dim=-1).tolist()
+            gold_labels += batch.labels.tolist()
+            total_loss += loss
 
-            # 各感情と感情極性に対する予測ラベルの取得
-            batch_pred_labels = [logit.argmax(dim=-1).tolist() for logit in out.logits]
-            batch_pred_labels = [label for sublist in batch_pred_labels for label in sublist]
-            all_pred_labels.extend(batch_pred_labels)
-
-            # 実際のラベル
-            batch_gold_labels = [label for sublist in batch.labels.tolist() for label in sublist]
-            all_gold_labels.extend(batch_gold_labels)
-
-        avg_loss = total_loss / num_samples
-
-        accuracy = accuracy_score(all_gold_labels, all_pred_labels)
-
-        # MAEの計算
-        mae = mean_absolute_error(all_gold_labels, all_pred_labels)
-
-        # QWKの計算
-        qwk = cohen_kappa_score(all_gold_labels, all_pred_labels, weights='quadratic')
+        print(f'pred_labels : \n {pred_labels}')
+        print(f'gold_labels : \n {gold_labels}')
+        accuracy: float = accuracy_score(gold_labels, pred_labels)
+        mae = mean_absolute_error(gold_labels, pred_labels)
+        qwk = cohen_kappa_score(gold_labels, pred_labels, weights='quadratic')
 
         return {
-            "loss": avg_loss,
+            "loss": total_loss / len(dataloader),
             "accuracy": accuracy,
             "mae": mae,
             "qwk": qwk,
@@ -311,6 +242,33 @@ class Experiment:
             f"qwk: {metrics['qwk']:.4f} \t"
         )
 
+    def predict_test_data(self):
+        self.model.eval()
+        predictions = []
+        all_batch_texts, pred_labels, gold_labels = [], [], []
+
+        with torch.no_grad():
+            for batch in tqdm(self.test_dataloader, total=len(self.test_dataloader), dynamic_ncols=True):
+                out: SequenceClassifierOutput = self.model(**batch)
+
+                # テキストのデコード
+                batch_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in batch['input_ids']]
+                all_batch_texts.extend(batch_texts)
+
+                pred_labels += out.logits.argmax(dim=-1).tolist()
+                gold_labels += batch.labels.tolist()
+            
+            print(f'all_pred_labels \n {pred_labels}')
+            print(f'all_gold_labels \n {gold_labels}')
+            # 各感情カテゴリーに対して、予測、実際のラベル、テキストを関連付ける
+            for text, pred, gold in zip(all_batch_texts, pred_labels, gold_labels):
+                predictions.append({
+                    "text": text,
+                    "predictions": pred,
+                    "gold_labels": gold
+                })
+
+        return predictions
 
 def main(args: Args):
     exp = Experiment(args=args)
@@ -325,6 +283,7 @@ def main(args: Args):
     utils.save_json(val_metrics, args.output_dir / "val-metrics.json")
     utils.save_json(test_metrics, args.output_dir / "test-metrics.json")
     utils.save_config(args, args.output_dir / "config.json")
+
 
 if __name__ == "__main__":
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"

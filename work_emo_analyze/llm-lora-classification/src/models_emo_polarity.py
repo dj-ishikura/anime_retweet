@@ -12,12 +12,11 @@ from transformers.modeling_outputs import (
 import pandas as pd
 import numpy as np
 
-from typing import List
-
 class Model(nn.Module):
     def __init__(
         self,
         model_name: str,
+        num_labels: int,
         lora_r: int,
         gradient_checkpointing: bool = True,
     ):
@@ -41,16 +40,15 @@ class Model(nn.Module):
             self.backbone.gradient_checkpointing_enable()
 
         hidden_size: int = self.backbone.config.hidden_size
-
-        self.classifiers = nn.ModuleList([nn.Linear(hidden_size, 4) for _ in range(8)] + [nn.Linear(hidden_size, 5)])
-
+        self.classifier = nn.Linear(hidden_size, num_labels)
+        print(f'num_labels : \n {num_labels}')
         self.loss_fn = nn.CrossEntropyLoss()
 
     def forward(
         self,
         input_ids: LongTensor,
         attention_mask: LongTensor = None,
-        labels: List[LongTensor] = None,
+        labels: LongTensor = None,
     ) -> SequenceClassifierOutput:
         outputs: BaseModelOutputWithPast = self.backbone(
             input_ids=input_ids,
@@ -64,18 +62,9 @@ class Model(nn.Module):
             ),
             seq_length - 1,
         ]
-        logits: List[FloatTensor] = [classifier(eos_hidden_states) for classifier in self.classifiers]
-
-        loss = None
-        if labels is not None:
-            # 最後の層（感情極性）以外の損失計算
-            loss_values = [self.loss_fn(logits[i], labels[:, i].long()) for i in range(len(logits) - 1)]
-
-            # 最後の層（感情極性）の損失計算（重み0.8を掛ける）
-            last_loss = self.loss_fn(logits[-1], labels[:, -1].long()) * 0.8
-
-            # 損失の合計を取り、層の数で割る
-            loss: FloatTensor = (sum(loss_values) + last_loss) / len(logits)
+        logits: FloatTensor = self.classifier(eos_hidden_states)
+        
+        loss: FloatTensor = self.loss_fn(logits, labels)
 
         return SequenceClassifierOutput(
             loss=loss,
@@ -102,15 +91,11 @@ class Model(nn.Module):
         )
 
     def clone_state_dict(self) -> dict:
-        classifiers_state_dict = {f'classifier_{i}': classifier.state_dict() for i, classifier in enumerate(self.classifiers)}
-
         return {
             "backbone": peft.get_peft_model_state_dict(self.backbone),
-            "classifiers": classifiers_state_dict,
+            "classifier": self.classifier.state_dict(),
         }
 
     def load_state_dict(self, state_dict: dict):
         peft.set_peft_model_state_dict(self.backbone, state_dict["backbone"])
-
-        for i, classifier in enumerate(self.classifiers):
-            classifier.load_state_dict(state_dict["classifiers"][f'classifier_{i}'])
+        self.classifier.load_state_dict(state_dict["classifier"])

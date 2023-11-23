@@ -11,4 +11,4 @@ HF_HOME=`pwd`/.cache/huggingface
 export TORCH_HOME TRANSFORMERS_CACHE HF_HOME
 export TORCH_USE_CUDA_DSA=1
 
-poetry run accelerate launch --mixed_precision=bf16 src/train.py --model_name rinna/japanese-gpt-neox-3.6b
+poetry run accelerate launch --mixed_precision=bf16 src/train_emo.py --model_name rinna/japanese-gpt-neox-3.6b
