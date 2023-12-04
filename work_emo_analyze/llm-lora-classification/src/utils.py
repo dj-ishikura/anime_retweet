@@ -130,3 +130,22 @@ def init(
 
     set_seed(seed)
     torch.set_float32_matmul_precision(float32_matmul_precision)
+
+# utils.py
+
+import json
+
+def append_to_json(data, file_path):
+    try:
+        with open(file_path, 'r+', encoding='utf-8') as file:
+            existing_data = json.load(file)
+            existing_data.update(data)
+            file.seek(0)
+            file.truncate()
+            json.dump(existing_data, file, ensure_ascii=False, indent=1)
+    except FileNotFoundError:
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, ensure_ascii=False, indent=1)
+    except json.JSONDecodeError:
+        print("JSONデコードエラーが発生しました。")
+

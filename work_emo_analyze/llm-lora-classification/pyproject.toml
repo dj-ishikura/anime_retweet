@@ -19,6 +19,7 @@ typed-argument-parser = "^1.8.1"
 accelerate = "^0.20.3"
 bitsandbytes = "^0.39.1"
 peft = "^0.3.0"
+datasets = "^2.15.0"
 
 
 [build-system]
