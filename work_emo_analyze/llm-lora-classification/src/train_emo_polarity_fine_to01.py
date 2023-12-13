@@ -23,7 +23,7 @@ import os
 
 class Args(Tap):
     model_name: str = "rinna/japanese-gpt-neox-3.6b"
-    dataset_dir: Path = "./datasets/wrime"
+    dataset_dir: Path = "./datasets/wrime_to01"
 
     batch_size: int = 32 # 32, 64, 128 # メモリオーバー　gliotq or オプション gradient_accumurate 
     epochs: int = 3 # 2, 3, 4
@@ -39,7 +39,7 @@ class Args(Tap):
     seed: int = 42
 
     def process_args(self):
-        self.polarity_labels = list(range(-2, 3))
+        self.polarity_labels = list(range(-1, 2))
         self.labels: list[int] = self.polarity_labels
 
         date, time = datetime.now().strftime("%Y-%m-%d/%H-%M-%S.%f").split("/")
@@ -47,7 +47,7 @@ class Args(Tap):
             "outputs",
             self.model_name,
             date,
-            4
+            "to01_2"
         )
 
     def make_output_dir(self, *args) -> Path:
@@ -114,7 +114,7 @@ class Experiment:
             max_length=args.max_seq_len,
         )
 
-        labels = torch.LongTensor([d['Avg. Readers_Sentiment']+2 for d in data_list])
+        labels = torch.LongTensor([d['Avg. Readers_Sentiment']+1 for d in data_list])
         return BatchEncoding({**inputs, "labels": labels})
 
     def create_loader(
@@ -189,13 +189,17 @@ class Experiment:
             val_metrics = {"epoch": epoch, **self.evaluate(self.val_dataloader)}
             self.log(val_metrics)
 
-            if val_metrics["mae"] > best_val_loss:
+            if val_metrics["mae"] < best_val_loss:
                 best_val_loss = val_metrics["mae"]
                 best_epoch = epoch
                 best_state_dict = self.model.clone_state_dict()
 
         self.model.load_state_dict(best_state_dict)
         self.model.eval()
+            
+        #モデルの保存処理
+        torch.save(best_state_dict["backbone"],"model_emo_polarity_fine_to01.backbone")
+        torch.save(best_state_dict["classifier"],"model_emo_polarity_fine_to01.classifier")
 
         val_metrics = {"best-epoch": best_epoch, **self.evaluate(self.val_dataloader)}
         test_metrics = self.evaluate(self.test_dataloader)

@@ -47,7 +47,7 @@ class Args(Tap):
             "outputs",
             self.model_name,
             date,
-            4
+            1
         )
 
     def make_output_dir(self, *args) -> Path:
@@ -189,7 +189,7 @@ class Experiment:
             val_metrics = {"epoch": epoch, **self.evaluate(self.val_dataloader)}
             self.log(val_metrics)
 
-            if val_metrics["mae"] > best_val_loss:
+            if val_metrics["mae"] < best_val_loss:
                 best_val_loss = val_metrics["mae"]
                 best_epoch = epoch
                 best_state_dict = self.model.clone_state_dict()

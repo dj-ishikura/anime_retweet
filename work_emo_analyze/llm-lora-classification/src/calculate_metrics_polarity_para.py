@@ -9,7 +9,7 @@ def calculate_metrics(predictions, gold_labels):
     return accuracy, mae, qwk
 
 # ファイル名のパターンに基づいてファイルを探す
-output_dir = "/work/n213304/learn/anime_retweet_2/work_emo_analyze/llm-lora-classification/outputs/rinna__japanese-gpt-neox-3.6b/2023-12-01/4"
+output_dir = "/work/n213304/learn/anime_retweet_2/work_emo_analyze/llm-lora-classification/outputs/rinna__japanese-gpt-neox-3.6b/2023-12-04/to01_2"
 
 # 結果を格納するためのリスト
 results = []
