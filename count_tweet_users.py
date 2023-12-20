@@ -12,24 +12,30 @@ import japanize_matplotlib
 
 def read_jsonl(input_path):
     data = []
+    processed_tweet_ids = set()  # 処理済みのツイートIDを追跡するためのセット
+
     with open(input_path, 'r', encoding='utf-8') as f:
         for line in f:
             # タブで区切られた行を分割し、2列目（0から数えて1）をJSONとして解析
             line = line.replace(",", "\t", 2)
             json_string = line.split('\t')[2]
             tweet = json.loads(json_string.rstrip('\n|\r'))
+
             # ツイートのみを取得
             if "retweeted_status" in tweet:
                 tweet = tweet["retweeted_status"]
-                if "created_at" in tweet:
-                    if "user" in tweet:
-                        ruduced_data = {
+                if "created_at" in tweet and "user" in tweet and "id_str" in tweet["user"]:
+                    tweet_id = tweet['id_str']
+                    if tweet_id not in processed_tweet_ids:  # 重複チェック
+                        reduced_data = {
                             'created_at': tweet['created_at'],
-                            'user': tweet['user']
+                            'user': tweet['user'],
+                            'tweet_id': tweet_id
                         }
-            data.append(ruduced_data)
-    return data
+                        data.append(reduced_data)
+                        processed_tweet_ids.add(tweet_id)  # 処理済みとしてIDを追加
 
+    return data
 
 def count_tweet_users(input_file, start_date, end_date, period_weeks, output_csv, output_png, title, id):
     period = timedelta(weeks=int(period_weeks))
@@ -55,12 +61,17 @@ def count_tweet_users(input_file, start_date, end_date, period_weeks, output_csv
     df.set_index('date', inplace=True)
 
     df.to_csv(output_csv)
+    df['month_day'] = df.index.str.split('-').str[1] + '-' + df.index.str.split('-').str[2]
 
     # プロットの作成と保存
-    df.plot(kind='line', y='count', marker='o')
-    plt.title(f'{id}\n{title} : Tweet Users Count, period {period_weeks}')
-    plt.xlabel('Date')
-    plt.ylabel('Tweet Users Count')
+    df.plot(kind='line', x='month_day', y='count', marker='o', label='週間ツイートユーザ数')
+    plt.xticks(rotation=45)
+    # plt.title(f'{id}\n{title} : 週間ツイートユーザ数の推移',  fontsize=16)
+    plt.title(f'{title}', fontsize=16)
+    plt.xlabel('放送日', fontsize=14)
+    plt.ylabel('週間ツイートユーザ数', fontsize=14)
+    plt.tight_layout()  # ラベルが画像の外に出ないように調整
+    plt.legend()
     plt.savefig(output_png)
 
 def get_info_from_csv(id):
