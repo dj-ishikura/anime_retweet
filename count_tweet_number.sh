@@ -1,5 +1,6 @@
 #!/bin/bash
 source get_memory_allocation.sh
+
 function wait_for_jobs() {
     # ジョブの数を取得します
     job_count=$(qstat -u $USER | wc -l)
@@ -12,25 +13,24 @@ function wait_for_jobs() {
 }
 
 input_dir="./anime_tweet_concat"
-output_dir="count_tweet_users"
+output_dir="count_tweet_number"
 mkdir -p $output_dir
 
 for file in $input_dir/*.csv; do
     id=$(basename $file .csv)
-    # id="2022-10-555"
+    # id="2022-10-582"
     file="${input_dir}/${id}.csv"
     for period in 1; do
         wait_for_jobs
     
-        output_csv="${output_dir}/${id}.csv"
-        output_png="${output_dir}/${id}.png"
+        output_csv="${output_dir}/${id}_${period}_week_tweet_counts.csv"
+        output_png="${output_dir}/${id}_${period}_week_tweet_counts.png"
         if [ ! -f "$output_csv" ] || [ ! -f "$output_png" ]; then
             echo $output_csv
             mem=$(get_memory_allocation $file)
-            J=$id M=$mem qcmd python count_tweet_users.py $file $period $output_csv $output_png $id
+            J=$id M=$mem qcmd python count_tweet_number.py $file $period $output_csv $output_png $id
             # python count_tweet_users.py $file $period $output_csv $output_png $id
             sleep 1
-            break
         fi
     done
 done

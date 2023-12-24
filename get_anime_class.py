@@ -376,7 +376,7 @@ def plot_and_save_all_clusters(anime_tweet_data_dict, output_file):
 def main():
     mean_tweet_user_class = 3
     weekly_tweet_user_class = 4
-    directory_path = 'count_tweet'
+    directory_path = 'count_tweet_users'
     anime_tweet_data_dict = get_data(directory_path)
     print(f'放送週が11-13週のアニメ数 : {len(anime_tweet_data_dict["anime_weekly_tweet_list"])}')
     # 上位数%を取得
