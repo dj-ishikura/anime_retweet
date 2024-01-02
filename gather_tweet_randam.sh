@@ -33,5 +33,4 @@ while [[ "$current_date" < "$end_date" ]]; do
     fi
     # 次の日に進みます
     current_date=$(date -I -d "$current_date + 1 day")
-    break
 done

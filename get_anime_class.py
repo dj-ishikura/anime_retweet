@@ -61,6 +61,9 @@ def filter_top_percentage_data(anime_tweet_data_dict, top_percentage):
     threshold = np.percentile(anime_tweet_data_dict['mean_anime_weekly_tweet_list'], 100 - top_percentage)
     print(f'閾値：{threshold}')
 
+    # フィルタリング前のアニメ作品の平均週間ツイートユーザ数の分布
+    plot_tweet_mean_hist(anime_tweet_data_dict)
+
     # 閾値以上のツイート数を持つアニメのみをフィルタリング
     top_indices = [i for i, mean_value in enumerate(anime_tweet_data_dict['mean_anime_weekly_tweet_list']) if mean_value >= threshold]
 
@@ -70,6 +73,26 @@ def filter_top_percentage_data(anime_tweet_data_dict, top_percentage):
     anime_tweet_data_dict['mean_anime_weekly_tweet_list'] = [anime_tweet_data_dict['mean_anime_weekly_tweet_list'][i] for i in top_indices]
 
     return anime_tweet_data_dict
+
+def plot_tweet_mean_hist(anime_tweet_data_dict):
+    averages = anime_tweet_data_dict['mean_anime_weekly_tweet_list']
+    plt.figure()
+    bins = range(0, 1500, 100)
+    plt.hist(averages, bins=bins, alpha=0.7, color='skyblue', edgecolor='black')
+    sorted_averages = sorted(averages)
+    median = np.percentile(sorted_averages, 50) # len(averages)の80%に相当する値
+    plt.axvline(median, color='r', linestyle='dashed', linewidth=2, label=f'中央値:{median:.1f}')
+    
+    upper = np.percentile(sorted_averages, 90) # len(averages)の80%に相当する値
+    plt.axvline(upper, color='g', linestyle='dashed', linewidth=2, label=f'90パーセントタイル:{upper:.1f}')
+
+    plt.minorticks_on()
+    # Set title and labels
+    # plt.title('平均週間ツイートユーザの分布')
+    plt.xlabel('平均週間ツイートユーザ数', fontsize=14)
+    plt.ylabel('作品数', fontsize=14)
+    plt.legend(fontsize=14)
+    plt.savefig('plot_tweet_mean_hist_11_13_week_anime.png')
 
 def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
     # プロットのためにデータとラベルを取得
@@ -113,14 +136,12 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
     num_weekly_clusters = len(set(anime_tweet_data_dict['weekly_tweet_user_clusters']))
     label = ["上昇", "下降", "U型 (横ばい)", "W型 (山型)"]
 
-    fig, axes = plt.subplots(1, num_weekly_clusters, figsize=(18, 4), sharex=False, sharey=False)
-    # weekly_tweet_user_clustersごとにサブプロットを作成
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
     for i in range(num_weekly_clusters):
-        # 指定したweekly_clusterに属する時系列データのインデックスを取得
         indices = [idx for idx, label in enumerate(weekly_clusters) if label == i]
         cluster_series = [scaled_data[idx] for idx in indices]
 
-        ax = axes[i]
+        ax = axes[i // 2, i % 2]  # この行を変更
 
         # サブプロットにデータがある場合のみプロット
         if indices:
@@ -152,14 +173,12 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
     plt.savefig("plot_anime_class_weekly_tweet_users.png", bbox_inches='tight')
     plt.close()
 
-    fig, axes = plt.subplots(1, num_weekly_clusters, figsize=(18, 4), sharex=False, sharey=False)
-    # weekly_tweet_user_clustersごとにサブプロットを作成
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
     for i in range(num_weekly_clusters):
-        # 指定したweekly_clusterに属する時系列データのインデックスを取得
         indices = [idx for idx, label in enumerate(weekly_clusters) if label == i]
         cluster_series = [scaled_data[idx] for idx in indices]
 
-        ax = axes[i]
+        ax = axes[i // 2, i % 2]  # この行を変更
 
         # サブプロットにデータがある場合のみプロット
         if indices:
@@ -376,7 +395,7 @@ def plot_and_save_all_clusters(anime_tweet_data_dict, output_file):
 def main():
     mean_tweet_user_class = 3
     weekly_tweet_user_class = 4
-    directory_path = 'count_tweet_users'
+    directory_path = 'count_tweet'
     anime_tweet_data_dict = get_data(directory_path)
     print(f'放送週が11-13週のアニメ数 : {len(anime_tweet_data_dict["anime_weekly_tweet_list"])}')
     # 上位数%を取得
