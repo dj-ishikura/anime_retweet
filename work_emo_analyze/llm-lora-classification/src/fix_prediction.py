@@ -16,10 +16,10 @@ def save_json(data: dict, path: str):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 # 元のツイートデータを読み込む
-original_tweet_dir = "/work/n213304/learn/anime_retweet_2/extra_anime_tweet_text/"
+original_tweet_dir = "/work/n213304/learn/anime_retweet_2/extra_anime_tweet_text_kikan?/"
 
 # prediction ディレクトリ内の各ファイルに対して処理を行う
-prediction_dir = Path('/work/n213304/learn/anime_retweet_2/work_emo_analyze/llm-lora-classification/prediction')
+prediction_dir = Path('/work/n213304/learn/anime_retweet_2/work_emo_analyze/llm-lora-classification/prediction copy')
 for prediction_file in prediction_dir.glob('*.json'):
     print(f"{prediction_file} ...")
     original_fime_name = prediction_file.stem

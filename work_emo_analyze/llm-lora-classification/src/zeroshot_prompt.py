@@ -5,21 +5,17 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import torch
 from transformers import pipeline
 from transformers.pipelines.base import KeyDataset
-import pandas as pd
 from datasets import load_dataset
 
 import src.utils as utils
 
-import torch
-import numpy as np
-import random
-
 class Args(Tap):
     model_name: str = "rinna/japanese-gpt-neox-3.6b"
     dataset_dir: Path = "./datasets/wrime_to01"
-    output_file: Path = "./zeroshot.json"
+    output_file: Path = "./zeroshot_prompt.json"
     device: int = 0 if torch.cuda.is_available() else -1
-    batch_size: int = 1
+    batch_size: int = 16
+    ignore_premise: bool = False
 
     def process_args(self):
         self.labels: List[str] = ["negative", "neutral", "positive"]
@@ -28,26 +24,39 @@ class Args(Tap):
 def main(args):
     dataset = load_dataset('csv', data_files={'test': str(args.test_file)}, delimiter='\t', split='test')
     def dsconv(x):
-        x['text'] = x['Sentence']
-        return x
-    # dataset = dataset.map(dsconv)
-    print(f'dataset: \n {dataset}')
-    print(f'args.labels: \n {args.labels}')
+        x['text'] = """question: Classify the sentiment of the following tweet into three categories, such as negative, neutral, or positive. 
+tweet: 最高にろっくなアニメやった ありがとうBTR 速攻でロスになってますわ  #ぼっち・ざ・ろっく
+sentiment classification: positive
 
-    classifier = pipeline("sentiment-analysis", model=args.model_name, device=args.device)
+question: Classify the sentiment of the following tweet into three categories, such as negative, neutral, or positive. 
+tweet: 【新作予約情報】吸血鬼すぐ死ぬ  アクリルチャーム付き缶バッジ  ¥1000+税  ※12月10日より店頭予約受付開始 ※1月下旬頃入荷予定   #秋田書店ストア #吸血鬼すぐ死ぬ https://t.co/xHZnT8jpgi
+sentiment classification: neutral
+
+question: Classify the sentiment of the following tweet into three categories, such as negative, neutral, or positive.
+tweet: """ + x['Sentence'] + "\n sentiment classification: "
+        return x
+    dataset = dataset.map(dsconv)
+
+    pipe = pipeline(model=args.model_name,
+                    task='text-generation',
+                    device=args.device)
 
     gold_labels = []
     pred_labels = []
     results = []
-    for example, result in zip(dataset, classifier(KeyDataset(dataset, 'Sentence'), batch_size=args.batch_size)):
-        print(f'result: \n {result}')
-        print(f'example: \n {example}')
+    label_dict = {-1: "negative", 0: "neutral", 1: "positive"}
+    for e,r in zip(dataset,
+                   pipe(KeyDataset(dataset, 'text'),
+                        batch_size=args.batch_size)):
 
-        p = result['labels'][0]
-        pred_labels.append(p)
-        gold_labels.append(args.labels[example['Avg. Readers_Sentiment']+1])
-        results.append({'gold_label': args.labels[example['Avg. Readers_Sentiment']+1],
-                        'predicted_label': p})
+        print(f"r[0]['generated_text'] : {r[0]['generated_text']}")
+
+        pred = r[0]['generated_text']
+        pred_labels.append(pred)
+        gold_labels.append(e['Avg. Readers_Sentiment'])
+        results.append({'Sentence': e['Sentence'],
+                        'gold_label': label_dict[e['Avg. Readers_Sentiment']],
+                        'predicted_label': pred})
 
     from sklearn.metrics import accuracy_score, mean_absolute_error, cohen_kappa_score
 

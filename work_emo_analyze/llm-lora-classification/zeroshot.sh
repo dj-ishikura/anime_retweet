@@ -11,4 +11,5 @@ HF_HOME=`pwd`/.cache/huggingface
 export TORCH_HOME TRANSFORMERS_CACHE HF_HOME
 export TORCH_USE_CUDA_DSA=1
 
-poetry run accelerate launch src/zeroshot.py
+# poetry run accelerate launch src/zeroshot.py
+poetry run accelerate launch src/zeroshot_prompt.py

@@ -120,7 +120,7 @@ class Experiment:
     def load_dataset(
         self,
     ) -> DataLoader:
-        dataset: pd.DataFrame = pd.read_json(args.input_path, lines=True)
+        dataset: pd.DataFrame = pd.read_json(args.input_path, lines=True, dtype={'tweet_id': str})
         # dataset: pd.DataFrame = pd.read_csv(args.input_path, sep='\t')
         print(dataset)
         return self.create_loader(dataset.to_dict(orient="records"))

@@ -168,6 +168,9 @@ cython_debug/
 
 *.o*
 
-prediction
+prediction*
 *.backbone
 *.classifier
+tweet_emo_weekly*
+retweet_*
+

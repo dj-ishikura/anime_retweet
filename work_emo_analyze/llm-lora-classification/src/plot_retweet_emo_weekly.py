@@ -44,7 +44,6 @@ def count_tweet(tweet_object_file, tweet_emo_file, start_date, end_date, output_
     print(tweet_emo_df)
     # tweets_df と tweet_emo_df を tweet_id 列で結合する
     tweets_df = pd.merge(tweets_df, tweet_emo_df, on='tweet_id')
-    # tweets_df = pd.concat([tweets_df, tweet_emo_df], axis=1)
 
     tweets_df['created_at'] = pd.to_datetime(tweets_df['created_at'], format='%a %b %d %H:%M:%S +0000 %Y')
     tweets_df['created_at'] = tweets_df['created_at'].dt.tz_localize('UTC').dt.tz_convert('Asia/Tokyo')  # convert to JST
@@ -79,10 +78,9 @@ def plot_tweet_weekly(df, output_png, title, id):
     # plt.title(f'{id}\n{title} : Tweet Emo Count')
     plt.title(f'{title}')
     plt.xticks(ticks=range(len(df['month_day'])), labels=df['month_day'], rotation=45)
-    plt.tick_params(axis='both', labelsize=12)
-    plt.xlabel('放送日', fontsize=16)
-    plt.ylabel('週間ツイート数', fontsize=16)
-    plt.legend(labels=['ポジティブ', 'ニュートラル', 'ネガティブ'], fontsize=14)  # 凡例のラベルを指定
+    plt.xlabel('放送日', fontsize=14)
+    plt.ylabel('週間ツイート数', fontsize=14)
+    plt.legend(labels=['ポジティブ', 'ニュートラル', 'ネガティブ'])  # 凡例のラベルを指定
     plt.tight_layout()  # ラベルが画像の外に出ないように調整
     plt.savefig(output_png)
 

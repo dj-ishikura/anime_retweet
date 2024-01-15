@@ -53,6 +53,5 @@ do
     echo "Processing ${file}"
     qsub -W input_path=${file} output_path=${output_file} prediction_job.sh 
     sleep 1
-    break
   fi
 done
