@@ -46,12 +46,13 @@ do
   size=$(du -ab $file | awk '{print $1}')
   mem=$(get_memory_allocation $size)
   # use the processing script to sort the csv file by 'tweet_id' and get the latest 'created_at'
-    filename=$(basename "$file" .csv)  # .csv 拡張子を取り除く
-    output_file="${OUTPUT_DIR}/${filename}.jsonl"  # 新しい .tsv 拡張子を追加
+    id=$(basename "$file" .csv)  # .csv 拡張子を取り除く
+    output_file="${OUTPUT_DIR}/${id}.jsonl"  # 新しい .tsv 拡張子を追加
 
   if [ ! -f $output_file ]; then
     echo "Processing ${file}"
-    M=${mem} qcmd python get_text_from_retweet_concat.py ${file} ${output_file}
+    # M=${mem} qcmd python get_text_from_retweet_concat.py ${file} ${output_file} ${id}
+    python get_text_from_retweet_concat.py ${file} ${output_file} ${id}
     sleep 1
   fi
 done
