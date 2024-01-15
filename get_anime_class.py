@@ -28,6 +28,9 @@ from tslearn.clustering import KShape
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
 from tslearn.barycenters import dtw_barycenter_averaging
 from sklearn.cluster import KMeans
+from matplotlib import rcParams
+
+rcParams['pdf.fonttype'] = 42
 
 def get_data(directory_path):
     anime_tweet_data_dict = {}
@@ -87,12 +90,13 @@ def plot_tweet_mean_hist(anime_tweet_data_dict):
     plt.axvline(upper, color='g', linestyle='dashed', linewidth=2, label=f'90パーセントタイル:{upper:.1f}')
 
     plt.minorticks_on()
+    plt.tick_params(axis='both', labelsize=12)
     # Set title and labels
     # plt.title('平均週間ツイートユーザの分布')
-    plt.xlabel('平均週間ツイートユーザ数', fontsize=14)
-    plt.ylabel('作品数', fontsize=14)
+    plt.xlabel('平均週間ツイートユーザ数', fontsize=16)
+    plt.ylabel('作品数', fontsize=16)
     plt.legend(fontsize=14)
-    plt.savefig('plot_tweet_mean_hist_11_13_week_anime.png')
+    plt.savefig('plot_tweet_mean_hist_11_13_week_anime.pdf')
 
 def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
     # プロットのためにデータとラベルを取得
@@ -101,18 +105,37 @@ def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
 
     # 散布図をプロット
     label_to_text = ["多い", "少ない", "中くらい"]
-    plt.figure(figsize=(8, 6))
-    for cluster in np.unique(labels):
+    plt.figure(figsize=(6.4, 4.8))
+
+    # 表示順序を手動で指定
+    for cluster_label in [0, 2, 1]:  # "多い" -> "中くらい" -> "少ない" の順
         plt.scatter(
-            x=np.arange(len(mean_values))[labels == cluster],
-            y=np.array(mean_values)[labels == cluster],
-            label=label_to_text[cluster]
+            x=np.arange(len(mean_values))[labels == cluster_label],
+            y=np.array(mean_values)[labels == cluster_label],
+            label=label_to_text[cluster_label]
         )
 
-    plt.xlabel('アニメ作品ID')
-    plt.ylabel('平均週間ツイートユーザ数')
-    plt.legend()
-    plt.savefig("plot_anime_class_mean_tweet_users.png", bbox_inches='tight')
+    plt.tick_params(axis='both', labelsize=12)
+    plt.xlabel('テレビアニメ作品ID', fontsize=16)
+    plt.ylabel('平均週間ツイートユーザ数', fontsize=16)
+    plt.legend(fontsize=14)
+    plt.savefig("plot_anime_class_mean_tweet_users.pdf", bbox_inches='tight')
+
+
+def save_cluster_boundaries(anime_tweet_data_dict):
+    cluster_labels = anime_tweet_data_dict['mean_tweet_user_clusters']
+    mean_values = anime_tweet_data_dict['mean_anime_weekly_tweet_list']
+
+    # クラスタごとの境界値を計算する
+    cluster_boundaries = {}
+    for cluster in range(max(cluster_labels) + 1):
+        cluster_data = [mean_values[i] for i in range(len(mean_values)) if cluster_labels[i] == cluster]
+        cluster_boundaries[cluster] = [min(cluster_data), max(cluster_data)]
+
+    # CSVファイルに保存する
+    df = pd.DataFrame.from_dict(cluster_boundaries, orient='index', columns=['min', 'max'])
+    df.index.name = 'mean_tweet_user_clusters'
+    df.to_csv("anime_class_mean_tweet_users_boudaries.csv")
 
 def cluster_by_mean_tweet_users(anime_tweet_data_dict, mean_tweet_user_class):
     mean_values = anime_tweet_data_dict['mean_anime_weekly_tweet_list']
@@ -125,6 +148,7 @@ def cluster_by_mean_tweet_users(anime_tweet_data_dict, mean_tweet_user_class):
     anime_tweet_data_dict['mean_tweet_user_clusters'] = labels
 
     plot_cluster_by_mean_tweet_users(anime_tweet_data_dict)
+    save_cluster_boundaries(anime_tweet_data_dict)
 
     return anime_tweet_data_dict
 
@@ -134,7 +158,7 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
 
     # 正規化前のプロット
     num_weekly_clusters = len(set(anime_tweet_data_dict['weekly_tweet_user_clusters']))
-    label = ["上昇", "下降", "U型 (横ばい)", "W型 (山型)"]
+    label = ["上昇", "下降", "山型", "横ばい"]
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
     for i in range(num_weekly_clusters):
@@ -170,7 +194,7 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
     # グラフ全体の設定
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
-    plt.savefig("plot_anime_class_weekly_tweet_users.png", bbox_inches='tight')
+    plt.savefig("plot_anime_class_weekly_tweet_users.pdf", bbox_inches='tight')
     plt.close()
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
@@ -218,17 +242,21 @@ def cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class
 
     scaler = MinMaxScaler()
     for series in weekly_tweet_data:
+        series = series[:-1]
         x_original = np.linspace(0, 1, len(series))
-        x_resampled = np.linspace(0, 1, 12)
+        x_resampled = np.linspace(0, 1, 11)
         resampled_series = np.interp(x_resampled, x_original, series)
 
         normalized_series = scaler.fit_transform(resampled_series.reshape(-1, 1)).ravel()
+        # normalized_series = scaler.fit_transform(x_original.reshape(-1, 1)).ravel()
         resampled_and_normalized_data.append(normalized_series)
 
         # クラスタリング用のデータから1週目と11, 12週目を除外
-        filtered_series = np.delete(normalized_series, [0, 11])
+
+        # filtered_series = np.delete(normalized_series, [0, -1])
         # filtered_series = np.delete(normalized_series, [])
-        resampled_data_for_clustering.append(filtered_series)
+        resampled_data_for_clustering.append(normalized_series)
+
 
     """
     for series in weekly_tweet_data:
@@ -251,6 +279,9 @@ def cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class
     # model = AgglomerativeClustering(n_clusters=weekly_tweet_user_class, linkage='average')
     model = TimeSeriesKMeans(n_clusters=weekly_tweet_user_class, metric="dtw", verbose=True, max_iter=10, random_state=42)
     labels = model.fit_predict(np.array(resampled_data_for_clustering))
+    
+    # formatted_data = to_time_series_dataset(resampled_data_for_clustering)
+    # labels = model.fit_predict(formatted_data)
 
     anime_tweet_data_dict['weekly_tweet_user_clusters'] = labels
 
@@ -352,7 +383,7 @@ def plot_and_save_all_clusters(anime_tweet_data_dict, output_file):
     num_weekly_clusters = len(set(anime_tweet_data_dict['weekly_tweet_user_clusters']))
     num_mean_clusters = len(set(anime_tweet_data_dict['mean_tweet_user_clusters']))
 
-    w_label = ["上昇", "下降", "U型 (横ばい)", "W型 (山型)"]
+    w_label = ["上昇", "下降", "山型", "横ばい"]
     m_label = ["多い", "少ない", "中くらい"]
 
     fig, axes = plt.subplots(num_weekly_clusters, num_mean_clusters, figsize=(15, 8), sharex=False, sharey=False)
