@@ -187,9 +187,9 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
                 ax.set_ylim([min(all_y_values), max(all_y_values)])
             
             # タイトルとラベルの設定
-            ax.set_title(f'{label[i]}', fontsize=18) 
-            ax.set_xlabel('放送週', fontsize=16)
-            ax.set_ylabel('週間ツイートユーザ数', fontsize=16)
+            ax.set_title(f'{label[i]}', fontsize=20) 
+            ax.set_xlabel('放送週', fontsize=18)
+            ax.set_ylabel('週間ツイートユーザ数', fontsize=18)
 
     # グラフ全体の設定
     plt.tight_layout()
@@ -332,6 +332,7 @@ def save_clustering_results_to_csv(anime_tweet_data_dict, filename):
     results_df = pd.DataFrame({
         'id': anime_tweet_data_dict['anime_ids'],
         'title': title_list,
+        'mean_tweet_user_count': anime_tweet_data_dict['mean_anime_weekly_tweet_list'],
         'weekly_tweet_user_clusters': anime_tweet_data_dict['weekly_tweet_user_clusters'],
         'mean_tweet_user_clusters': anime_tweet_data_dict['mean_tweet_user_clusters']
     })
