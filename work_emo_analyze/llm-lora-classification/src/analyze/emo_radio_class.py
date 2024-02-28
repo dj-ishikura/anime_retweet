@@ -142,13 +142,14 @@ cluster_analysis.plot(
 )
 
 # plt.title('クラスタ毎の感情割合')
-plt.xlabel('週間ツイートユーザ数の推移傾向', fontsize=16)
+plt.xlabel('週間ツイートユーザ数の推移傾向', fontsize=18)
 plt.xticks(rotation=0)
-plt.ylabel('割合', fontsize=16)
-plt.tick_params(axis='both', labelsize=14)
-plt.legend(['ポジティブ', 'ニュートラル', 'ネガティブ'])
+plt.ylabel('割合', fontsize=18)
+plt.tick_params(axis='both', labelsize=18)
+plt.legend(['ポジティブ', 'ニュートラル', 'ネガティブ'], fontsize=16)
 plt.tight_layout()  # ラベルが画像の外に出ないように調整
 plt.savefig("./src/analyze/emo_radio_class_weekly.pdf")
+plt.savefig("./src/analyze/emo_radio_class_weekly.png")
 plt.close()
 
 grouped_df = combined_df.groupby(['mean_tweet_user_clusters'])
@@ -175,13 +176,14 @@ cluster_analysis.plot(
 )
 
 # plt.title('クラスタ毎の感情割合')
-plt.xlabel('平均週間ツイートユーザ数', fontsize=16)
+plt.xlabel('平均週間ツイートユーザ数', fontsize=18)
 plt.xticks(rotation=0)
-plt.ylabel('割合', fontsize=16)
-plt.tick_params(axis='both', labelsize=14)
-plt.legend(['ポジティブ', 'ニュートラル', 'ネガティブ'])
+plt.ylabel('割合', fontsize=18)
+plt.tick_params(axis='both', labelsize=18)
+plt.legend(['ポジティブ', 'ニュートラル', 'ネガティブ'], fontsize=16)
 plt.tight_layout()  # ラベルが画像の外に出ないように調整
 plt.savefig("./src/analyze/emo_radio_class_mean.pdf")
+plt.savefig("./src/analyze/emo_radio_class_mean.png")
 plt.close()
 
 
