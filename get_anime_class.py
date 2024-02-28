@@ -97,6 +97,7 @@ def plot_tweet_mean_hist(anime_tweet_data_dict):
     plt.ylabel('作品数', fontsize=16)
     plt.legend(fontsize=14)
     plt.savefig('plot_tweet_mean_hist_11_13_week_anime.pdf')
+    plt.savefig('plot_tweet_mean_hist_11_13_week_anime.png')
 
 def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
     # プロットのためにデータとラベルを取得
@@ -120,6 +121,7 @@ def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
     plt.ylabel('平均週間ツイートユーザ数', fontsize=16)
     plt.legend(fontsize=14)
     plt.savefig("plot_anime_class_mean_tweet_users.pdf", bbox_inches='tight')
+    plt.savefig("plot_anime_class_mean_tweet_users.png", bbox_inches='tight')
 
 
 def save_cluster_boundaries(anime_tweet_data_dict):
@@ -195,6 +197,7 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
     plt.savefig("plot_anime_class_weekly_tweet_users.pdf", bbox_inches='tight')
+    plt.savefig("plot_anime_class_weekly_tweet_users.png", bbox_inches='tight')
     plt.close()
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
