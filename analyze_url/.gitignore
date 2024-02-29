@@ -1,2 +1,5 @@
 tweet_url
 *.o*
+results
+plot_url
+tweet_url_weekly
