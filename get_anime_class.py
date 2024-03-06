@@ -101,11 +101,11 @@ def plot_tweet_mean_hist(anime_tweet_data_dict):
 
 def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
     # プロットのためにデータとラベルを取得
-    mean_values = anime_tweet_data_dict['mean_anime_weekly_tweet_list']
-    labels = anime_tweet_data_dict['mean_tweet_user_clusters']
+    mean_values = np.array(anime_tweet_data_dict['mean_anime_weekly_tweet_list'])
+    labels = np.array(anime_tweet_data_dict['mean_tweet_user_clusters'])
 
     # 散布図をプロット
-    label_to_text = ["多い", "少ない", "中くらい"]
+    label_to_text = ["多いクラスタ", "少ないクラスタ", "中くらいクラスタ"]
     plt.figure(figsize=(6.4, 4.8))
 
     # 表示順序を手動で指定
@@ -115,11 +115,24 @@ def plot_cluster_by_mean_tweet_users(anime_tweet_data_dict):
             y=np.array(mean_values)[labels == cluster_label],
             label=label_to_text[cluster_label]
         )
+        
+    # クラスタ間の線を引くための値を計算
+    # "多いクラスタ"と"中くらいクラスタ"の接続点
+    high_to_mid_y = (np.min(mean_values[labels == 0]) + np.max(mean_values[labels == 2])) / 2
+    # "中くらいクラスタ"と"少ないクラスタ"の接続点
+    mid_to_low_y = (np.min(mean_values[labels == 2]) + np.max(mean_values[labels == 1])) / 2
+
+    # x軸の範囲を取得
+    x_range = np.arange(len(mean_values))
+
+    # クラスタ間の接続点に線を引く
+    plt.plot(x_range, [high_to_mid_y] * len(x_range), 'k--')
+    plt.plot(x_range, [mid_to_low_y] * len(x_range), 'k--')
 
     plt.tick_params(axis='both', labelsize=12)
     plt.xlabel('テレビアニメ作品ID', fontsize=16)
     plt.ylabel('平均週間ツイートユーザ数', fontsize=16)
-    plt.legend(fontsize=14)
+    plt.legend(fontsize=14, loc='best')
     plt.savefig("plot_anime_class_mean_tweet_users.pdf", bbox_inches='tight')
     plt.savefig("plot_anime_class_mean_tweet_users.png", bbox_inches='tight')
 
@@ -160,7 +173,7 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
 
     # 正規化前のプロット
     num_weekly_clusters = len(set(anime_tweet_data_dict['weekly_tweet_user_clusters']))
-    label = ["上昇", "下降", "山型", "横ばい"]
+    label = ["上昇クラスタ", "下降クラスタ", "山型クラスタ", "横ばいクラスタ"]
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
     for i in range(num_weekly_clusters):
