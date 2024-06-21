@@ -250,6 +250,43 @@ def plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict):
     plt.subplots_adjust(top=0.9)
     plt.savefig("plot_anime_class_weekly_tweet_users_scaled.png", bbox_inches='tight')
     plt.close()
+    
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False, sharey=False)
+    for i in range(num_weekly_clusters):
+        indices = [idx for idx, label in enumerate(weekly_clusters) if label == i]
+        cluster_series = [scaled_data[idx] for idx in indices]
+
+        ax = axes[i // 2, i % 2]  # この行を変更
+
+        # サブプロットにデータがある場合のみプロット
+        if indices:
+            for idx in indices:
+                data = anime_tweet_data_dict['transformed_weekly_tweet_data'][idx]
+                ax.plot(range(1, len(data) + 1), data)
+                    
+                # 目盛りラベルの設定
+                ax.tick_params(axis='both', which='major', labelsize=12)
+                ax.tick_params(axis='both', which='minor', labelsize=12)
+                
+                # 軸の範囲を設定
+                data_lengths = [len(anime_tweet_data_dict['transformed_weekly_tweet_data'][idx]) for idx in indices]
+                max_length = max(data_lengths)
+                ax.set_xlim([1, max_length])
+                
+                # y軸の範囲を個別に設定
+                all_y_values = [y for idx in indices for y in anime_tweet_data_dict['transformed_weekly_tweet_data'][idx]]
+                ax.set_ylim([min(all_y_values), max(all_y_values)])
+            
+            # タイトルとラベルの設定
+            ax.set_title(f'{label[i]}', fontsize=18) 
+            ax.set_xlabel('X', fontsize=16)
+            ax.set_ylabel('週間ツイートユーザ数', fontsize=16)
+
+    # グラフ全体の設定
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.9)
+    plt.savefig("plot_anime_class_weekly_tweet_users_transformed.png", bbox_inches='tight')
+    plt.close()
 
 def cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class):
     weekly_tweet_data = anime_tweet_data_dict['anime_weekly_tweet_list']
@@ -266,12 +303,8 @@ def cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class
         normalized_series = scaler.fit_transform(resampled_series.reshape(-1, 1)).ravel()
         # normalized_series = scaler.fit_transform(x_original.reshape(-1, 1)).ravel()
         resampled_and_normalized_data.append(normalized_series)
-
-        # クラスタリング用のデータから1週目と11, 12週目を除外
-
         # filtered_series = np.delete(normalized_series, [0, -1])
         # filtered_series = np.delete(normalized_series, [])
-        resampled_data_for_clustering.append(normalized_series)
 
 
     """
@@ -294,12 +327,17 @@ def cluster_by_weekly_tweet_users(anime_tweet_data_dict, weekly_tweet_user_class
     # k-means法でクラスタリング
     # model = AgglomerativeClustering(n_clusters=weekly_tweet_user_class, linkage='average')
     model = TimeSeriesKMeans(n_clusters=weekly_tweet_user_class, metric="dtw", verbose=True, max_iter=10, random_state=42)
-    labels = model.fit_predict(np.array(resampled_data_for_clustering))
+    labels = model.fit_predict(anime_tweet_data_dict['scaled_weekly_tweet_data'])
+    cluster_centers = model.cluster_centers_
     
     # formatted_data = to_time_series_dataset(resampled_data_for_clustering)
     # labels = model.fit_predict(formatted_data)
 
     anime_tweet_data_dict['weekly_tweet_user_clusters'] = labels
+    anime_tweet_data_dict['transformed_weekly_tweet_data'] = cluster_centers
+    
+    print(f'scaled_weekly_tweet_data \n{anime_tweet_data_dict["scaled_weekly_tweet_data"]}')
+    print(f'transformed_weekly_tweet_data \n{anime_tweet_data_dict["transformed_weekly_tweet_data"]}')
 
     plot_cluster_by_weekly_tweet_users(anime_tweet_data_dict)
     return anime_tweet_data_dict

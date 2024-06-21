@@ -4,12 +4,12 @@
 RT_TWEET_PATH='/work/my016/mirror/twitter-rt/ja'
 
 # 出力先のディレクトリを作成
-output_dir="tweet_data_randam"
+output_dir="tweet_data_randam_2022_autumn"
 mkdir -p $output_dir
 
 # 検索するディレクトリの範囲を決定します
-start_date="2022-05-15"
-end_date="2022-05-21"
+start_date="2022-10-01"
+end_date="2022-12-31"
 
 # 開始日から終了日までの各日に対してループします
 current_date=$start_date

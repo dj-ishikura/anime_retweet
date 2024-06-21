@@ -53,4 +53,4 @@ output_file_path = sys.argv[1]
 with open(output_file_path, 'w', encoding='utf-8') as file:
     for tweet_id, tweet_json in sorted_tweet_data:
         # ツイートIDとツイートJSONをタブ区切りの形式でファイルに書き込む
-        file.write(f'{tweet_id}\t{json.dumps(tweet_json)}\n')
+        file.write(f'{tweet_id}\t{json.dumps(tweet_json, ensure_ascii=False)}\n')
