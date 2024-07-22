@@ -1,0 +1,6 @@
+*.o*
+*.jsonl
+plot/cooccurrence_networks
+plot/plot_target_word_count_anime
+plot/plot_target_word_count_illustration
+plot/plot_target_word_count_irai
