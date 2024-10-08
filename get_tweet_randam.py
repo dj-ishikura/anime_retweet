@@ -1,56 +1,63 @@
 # -*- coding: utf-8 -*-
-'''
-ツイートjsonから, 必要なデータを抽出
-'''
+"""ツイートjsonからメモリ効率良くランダムに100件のデータを抽出するプログラム"""
 
 import sys
 import json
-import glob
-import os
-import gzip
 import random
+import codecs
+from typing import Dict, List, Iterator
 
 from twitter import parse_tweet
 from log import get_logger
+
 logger = get_logger(__name__)
-    
-if __name__ == '__main__':
 
-    import codecs
+def process_tweet(tweet_json: Dict) -> Dict:
+    """ツイートを処理し、適切なデータを返す"""
+    if "retweeted_status" in tweet_json:
+        # リツイートの場合、オリジナルツイートのデータを使用
+        return tweet_json["retweeted_status"]
+    return tweet_json
+
+def reservoir_sampling(stream: Iterator[Dict], k: int) -> List[Dict]:
+    """リザーバーサンプリングを使用してストリームからkサンプルを選択"""
+    reservoir = []
+    for i, item in enumerate(stream):
+        if len(reservoir) < k:
+            reservoir.append(item)
+        else:
+            j = random.randint(0, i)
+            if j < k:
+                reservoir[j] = item
+    return reservoir
+
+def extract_random_tweets(input_stream, num_tweets: int = 1000) -> List[Dict]:
+    """入力ストリームからランダムに指定数のツイートを抽出する"""
+    def tweet_stream():
+        for tweet_json in parse_tweet(input_stream):
+            try:
+                yield process_tweet(tweet_json)
+            except KeyError as e:
+                logger.debug(f'KeyError: {e}')
+
+    return reservoir_sampling(tweet_stream(), num_tweets)
+
+def save_tweets(tweets: List[Dict], output_file: str):
+    """ツイートをファイルに保存する"""
+    with open(output_file, 'w', encoding='utf-8') as file:
+        for tweet_json in tweets:
+            tweet_id = tweet_json["id_str"]
+            file.write(f'{tweet_id}\t{json.dumps(tweet_json, ensure_ascii=False)}\n')
+
+def main():
+    """メイン関数"""
     sys.stdin = codecs.getreader(sys.stdin.encoding)(sys.stdin.detach(), errors='ignore')
+    
+    random_tweets = extract_random_tweets(sys.stdin)
+    print(f"Extracted {len(random_tweets)} random tweets")
+    
+    output_file_path = sys.argv[1]
+    save_tweets(random_tweets, output_file_path)
 
-    tweet_data = {}
-    for tweet_json in parse_tweet(sys.stdin):
-        try:
-            
-            # 0から2までのランダムな整数を生成
-            random_number = random.randint(0, 2)
-            print(random_number)
-
-            if "retweeted_status" in tweet_json:
-                tweet_json = tweet_json["retweeted_status"]
-            if "id_str" in tweet_json and tweet_json["id_str"] not in tweet_data:
-                tweet_id = tweet_json["id_str"]
-
-                if len(tweet_data) < 50 and random_number == 0:
-                    if "text" in tweet_json or "full_text":
-                        tweet_data[tweet_id] = tweet_json
-            
-        except KeyError as e:
-            # logger.debug('KeyError: %s', e)
-            pass
-        except TypeError as t:
-            # logger.debug('TypeError: %s', t)
-            pass
-
-# tweet_dataをツイートIDでソート
-print(len(tweet_data))
-sorted_tweet_data = sorted(tweet_data.items(), key=lambda x: x[0])
-
-# 保存するファイルのパス
-output_file_path = sys.argv[1]
-
-with open(output_file_path, 'w', encoding='utf-8') as file:
-    for tweet_id, tweet_json in sorted_tweet_data:
-        # ツイートIDとツイートJSONをタブ区切りの形式でファイルに書き込む
-        file.write(f'{tweet_id}\t{json.dumps(tweet_json, ensure_ascii=False)}\n')
+if __name__ == '__main__':
+    main()
