@@ -13,12 +13,13 @@ export TORCH_USE_CUDA_DSA=1
 
 INPUT_DIR=/work/n213304/learn/anime_retweet_2/extra_anime_tweet_text
 
-OUTPUT_DIR=./prediction
+OUTPUT_DIR=./prediction_random
 
 mkdir -p $OUTPUT_DIR
 
 for input_path in $INPUT_DIR/*.jsonl
 do
+    input_path="/work/n213304/learn/anime_retweet_2/random_tweets_text_2022_7-9.jsonl"
     filename=$(basename "$input_path" .jsonl)
     output_path="${OUTPUT_DIR}/${filename}.json"
     # output_path="${OUTPUT_DIR}/tweet_data_randam_text.jsonl"
