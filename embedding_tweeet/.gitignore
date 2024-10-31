@@ -1,0 +1,6 @@
+.cache
+.venv
+processed_data
+result
+poetry.lock
+pyproject.toml
